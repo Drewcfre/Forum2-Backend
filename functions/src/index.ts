@@ -7,9 +7,33 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {setGlobalOptions} from "firebase-functions";
+//import {setGlobalOptions} from "firebase-functions";
 import {onRequest} from "firebase-functions/https";
-import * as logger from "firebase-functions/logger";
+//import * as logger from "firebase-functions/logger";
+
+const fastify: any = require("fastify")({
+  logger: true,
+});
+
+fastify.addContentTypeParser("application/json", {}, (req: any, payload: any, done: any): void => {
+  req.rawBody = payload.rawBody;
+  done(null, payload.body)
+});
+
+fastify.get("/", async (request: any, reply: any): Promise<void> => {
+  reply.send({ hello: "world" });
+});
+
+fastify.get("/user", async (request: any, reply: any): Promise<void> => {
+  reply.send({ user: "John Doe" });
+});
+
+const fastifyApp: any = async (request: any, response: any): Promise<void> => {
+  await fastify.ready();
+  fastify.server.emit("request", request, response);
+};
+
+exports.app = onRequest(fastifyApp);
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -24,9 +48,9 @@ import * as logger from "firebase-functions/logger";
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-setGlobalOptions({maxInstances: 10});
+// setGlobalOptions({maxInstances: 10});
 
-export const helloWorld = onRequest((request, response) => {
-  logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello from Firebase!");
-});
+// export const helloWorld = onRequest((request, response) => {
+//   logger.info("Hello logs!", {structuredData: true});
+//   response.send("Hello from Firebase!");
+// });
