@@ -1,6 +1,17 @@
 import 'dotenv/config'
 import jwt from 'jsonwebtoken'
 
+async function generateToken(username: string): Promise<string> {
+  let secret = process.env.JWT_SECRET_KEY
+  if (!secret || secret.trim() === '') {
+    console.log('JWT secret key is not set in environment variables!')
+    return ''
+  }
+
+  let data = { username: username }
+  return jwt.sign(data, secret)
+}
+
 async function verifyToken(req: any): Promise<string | undefined> {
   let secret = process.env.JWT_SECRET_KEY
   if (!secret || secret.trim() === '') {
@@ -31,8 +42,6 @@ async function verifyToken(req: any): Promise<string | undefined> {
   }
 }
 
-async function verifyDeveloper(req: any): Promise<boolean | undefined> {
-
-}
+async function verifyDeveloper(req: any): Promise<boolean | undefined> { return verifyToken(req) === process.env.DEV_USERNAME }
 
 export { verifyToken, verifyDeveloper }

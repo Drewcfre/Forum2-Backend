@@ -1,53 +1,124 @@
-import admin from 'firebase-admin';
-import {onRequest} from 'firebase-functions/https';
+import admin from 'firebase-admin'
+import {onRequest} from 'firebase-functions/https'
+
+import bcrypt from 'bcrypt'
 
 import { fastify } from './fastify.config'
 import { verifyToken, verifyDeveloper } from './jwt.auth'
-
-
 
 const instanceStartTime = new Date()
 
 admin.initializeApp();
 const db = admin.firestore();
 
+//region Account Auth Functions
+// Recieves and parses sign up data, creating a new user account if all conditions are met.
+fastify.post('/user/register', async (req: any, res: any): Promise<void> => {
+  let verifyKey = crypto.randomUUID().toString()
+  console.log(`(${verifyKey}): Registering user...`)
+
+  let { username, password, email } = req.body
+
+  if(!username || username.trim() === '') {
+    console.log(`(${verifyKey}): Invalid username!`)
+    res.code(400).send({ error: 'Invalid username!' })
+  }
+  if(!password || password.trim() === '') {
+    console.log(`(${verifyKey}): Invalid password!`)
+    res.code(400).send({ error: 'Invalid password!' })
+  }
+  if(!email || email.trim() === '') {
+    console.log(`(${verifyKey}): Invalid email!`)
+    res.code(400).send({ error: 'Invalid email!' })
+  }
+
+  console.log(`(${verifyKey}): Valid credentials recieved!`)
+
+  if(await db.collection('users').where('username', '==', username)) {
+    console.log(`(${verifyKey}): Username taken!`)
+    res.code(400).send({ error: 'Username taken!' })
+  }
+
+  try {
+      console.log(`(${verifyKey}): Hashing password...`)
+      password = bcrypt.hashSync(password, 8)
+      console.log(`(${verifyKey}): Password hashed!`)
+
+      console.log(`(${verifyKey}): Creating account...`)
+      const account = await db.collection('users').add({
+        username: username,
+        password: password,
+        email:    email
+      })
+      console.log(`(${verifyKey}): User ${account.insertedId} registered!`)
 
 
-// Access Levels
-// Anonymous -- No account. Has access to limited boards, cannot rate posts, and can only make a couple threads and replies a day.
-// User -- Has access to all boards, rating, and can make unlimited posts. Users require verification.
-// Admin -- Can remove any post, ban users, and blacklist IPs. Admin posts can be pinned. Admins can only be added by Developers.
-// Developer -- Can edit any and all posts as well as user accounts. Developers are hardcoded into the backend.
-
-//region Anonymous Functions
-//
-fastify.get('/catalog/{board}/{sort}/{desc}', async (req: any, res: any): Promise<void> => {
-  db.collection(req.params.board).orderBy("createdAt", "desc").get().then((snapshot: any): void => {
-    const data = snapshot.docs.map((doc: any) => doc.data());
-    res.send(data);
-  });
-});
-
-fastify.post('/create/{board}', async (req: any, res: any): Promise<void> => {
+  }
+  catch (error) {
+      console.error(`(${verifyKey}): Error registering user: ${error}`)
+      res.code(500).send({ error: 'Internal server error! Please try again later!' })
+  }
 })
 
-fastify.delete('/delete/{thread}')
+
+//endregion
+
+// Access Levels
+// Anonymous -- No account, limited board access, no rating posts, limited number of posts per day
+// User      -- Personal account, access to all boards, able to rate other posts, unlimited posts per day
+// Admin     -- Admin panel, access to admin baord, can remove or pin any post, can ban or blacklist users
+// Developer -- Can edit or remove any post or account, has access to dev panel
+
+//region Anonymous Functions
+// Performs a query on all active threads in a board, sorting by the specified parameter. Returns a list of 100 threads.
+fastify.get('/catalog/{board}/{sort}/{dir}', async (req: any, res: any): Promise<void> => {
+  db.collection(req.params.board).orderBy(req.params.sort, req.params.dir).get().then((snapshot: any): void => {
+    const data = snapshot.docs.map((doc: any) => doc.data())
+    res.send(data)
+  })
+})
+
+// Creates a thread in the specified board.
+fastify.post('/thread/create/{board}', async (req: any, res: any): Promise<void> => {
+  await db.collection(req.params.board).add({
+
+  })
+})
+
+// Creates a reply under the specified thread.
+fastify.post('/reply/create/{thread}', async (req: any, res: any): Promise<void> => {
+
+})
 //endregion
 
 //region User Functions
+// Allows a user to edit a thread they previously made.
+fastify.put('/thread/edit/{thread}', async (req: any, res: any): Promise<void> => {
 
-//TODO: Add user functions here later.
+})
 
+fastify.delete('/thread/delete/{thread}', async (req: any, res: any): Promise<void> => {
+
+})
+
+// Allows a user to edit a reply they previously made.
+fastify.put('/reply/edit/{reply}', async (req: any, res: any): Promise<void> => {
+
+})
 //endregion
 
 //region Admin Functions
+fastify.put('/user/ban/{id}', async (req: any, res: any): Promise<void> => {
 
-//TODO: Add admin functions here later.
+})
 
+fastify.post('/blacklist/{ip}', async (req: any, res: any): Promise<void> => {
+
+})
 //endregion
 
 //region Developer Functions
-// Used to test whether the backend is available. Sneds out instance information.
+// Used to test whether the backend is available. Sends out instance information.
 fastify.get('/dev/test', async (req: any, res: any): Promise<void> => {
   if(verifyDeveloper(req)) {
     let timeActiveInMilliseconds = new Date() - instanceStartTime
