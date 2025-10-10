@@ -21,6 +21,7 @@
     "@fastify/routes": "^6.0.2",
     "@fastify/routes-stats": "^4.0.2",
     "@fastify/session": "^11.1.0",
+    "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.1",

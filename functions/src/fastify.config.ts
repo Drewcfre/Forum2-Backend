@@ -13,9 +13,9 @@ fastify.register(require('@fastify/helmet'), {
   global: true,
   contentSecurityPolicy: {
     directives: {
-      'child-src':   'self',
-      'connect-src': 'https://forum2-dun.vercel.app',
-      'frame-src':   'none',
+      'child-src':   ['https://forum2-dun.vercel.app', 'https://127.0.0.1', "'self'"],
+      'connect-src': ['https://forum2-dun.vercel.app', 'https://127.0.0.1', "'self'"],
+      'frame-src':   "'none'",
     }
   },
   crossOriginEmbedderPolicy: true,
@@ -34,7 +34,7 @@ fastify.register(require('@fastify/helmet'), {
 
 fastify.register(require('@fastify/cookie'))
 fastify.register(require('@fastify/session'), {
-  secret: process.env.SESSION_SECRET ,
+  secret: process.env.SESSION_SECRET,
   cookie: {
     secure:   true,
     httpOnly: true,
@@ -42,6 +42,11 @@ fastify.register(require('@fastify/session'), {
   },
   saveUnintialized: false,
   rolling:          true
+})
+
+fastify.addContentTypeParser("application/json", {}, (req: any, payload: any, done: any) => {
+  req.rawBody = payload.rawBody
+  done(null, payload.body)
 })
 
 fastify.ready()

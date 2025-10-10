@@ -32,7 +32,7 @@ async function verifyToken(req: any): Promise<string | undefined> {
           return ''
       }
 
-      const verified = jwt.verify(token, jwtSecretKey) as { username: string }
+      const verified = jwt.verify(token, secret) as { username: string }
       if (verified) return verified.username
       else return ''
   }
@@ -42,6 +42,6 @@ async function verifyToken(req: any): Promise<string | undefined> {
   }
 }
 
-async function verifyDeveloper(req: any): Promise<boolean | undefined> { return verifyToken(req) === process.env.DEV_USERNAME }
+async function verifyDeveloper(req: any): Promise<boolean | undefined> { return await verifyToken(req) === process.env.DEV_USERNAME }
 
 export { generateToken, verifyToken, verifyDeveloper }

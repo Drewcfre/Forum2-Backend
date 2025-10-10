@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt'
 import { fastify } from './fastify.config'
 import { generateToken, verifyToken, verifyDeveloper } from './jwt.auth'
 
-const instanceStartTime = new Date()
+const instanceStartTime: any = new Date()
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -22,14 +22,17 @@ fastify.post('/user/register', async (req: any, res: any): Promise<void> => {
   if(!username || username.trim() === '') {
     console.log(`(${regKey}): Invalid username!`)
     res.code(400).send({ error: 'Invalid username!' })
+    return
   }
   if(!password || password.trim() === '') {
     console.log(`(${regKey}): Invalid password!`)
     res.code(400).send({ error: 'Invalid password!' })
+    return
   }
   if(!email || email.trim() === '') {
     console.log(`(${regKey}): Invalid email!`)
     res.code(400).send({ error: 'Invalid email!' })
+    return
   }
 
   console.log(`(${regKey}): Valid credentials recieved!`)
@@ -45,13 +48,13 @@ fastify.post('/user/register', async (req: any, res: any): Promise<void> => {
       console.log(`(${regKey}): Password hashed!`)
 
       console.log(`(${regKey}): Creating account...`)
-      const account = await db.collection('users').add({
+      await db.collection('users').add({
         username:  username,
         password:  password,
         email:     email,
         verifyKey: crypto.randomUUID().toString()
       })
-      console.log(`(${regKey}): User ${account.insertedId} registered!`)
+      console.log(`(${regKey}): User ${username} registered!`)
       req.session.jwt = generateToken(username)
       res.code(200).send({ registered: true })
   }
@@ -70,17 +73,23 @@ fastify.post('/user/login', async (req: any, res: any): Promise<void> => {
   if(!username || username.trim() === '') {
     console.log(`(${regKey}): Invalid username!`)
     res.code(400).send({ error: 'Invalid username!' })
+    return
   }
   if(!password || password.trim() === '') {
     console.log(`(${regKey}): Invalid password!`)
     res.code(400).send({ error: 'Invalid password!' })
+    return
   }
 
   console.log(`(${regKey}): Valid credentials recieved! Searching for account...`)
-  const account = await db.collection('users').where('username', '==', username).get()
-  if(!account) {
+  const result = await db.collection('users').where('username', '==', username).get()
+  let account: any
+  result.forEach(doc => account = doc.data())
+
+  if(!account || account == '') {
     console.log(`(${regKey}): Invalid username!`)
     res.code(400).send({ error: 'Invalid username!' })
+    return
   }
 
   console.log(`(${regKey}): Account found! Comparing passwords...`)
@@ -96,6 +105,7 @@ fastify.post('/user/login', async (req: any, res: any): Promise<void> => {
 })
 
 fastify.get('/user/logout', async (req: any, res: any): Promise<void> => {
+  let regKey = crypto.randomUUID().toString()
   console.log(`(${regKey}): User logging out!`)
   req.session.destroy()
   res.code(200).send({ loggedIn: false })
@@ -110,7 +120,7 @@ fastify.get('/user/logout', async (req: any, res: any): Promise<void> => {
 
 //region Anonymous Functions
 // Performs a query on all active threads in a board, sorting by the specified parameter. Returns a list of 100 threads.
-fastify.get('/catalog/{board}/{sort}/{dir}', async (req: any, res: any): Promise<void> => {
+fastify.get('/catalog/:board/:sort}/:dir', async (req: any, res: any): Promise<void> => {
   db.collection(req.params.board).orderBy(req.params.sort, req.params.dir).get().then((snapshot: any): void => {
     const data = snapshot.docs.map((doc: any) => doc.data())
     res.send(data)
@@ -118,40 +128,50 @@ fastify.get('/catalog/{board}/{sort}/{dir}', async (req: any, res: any): Promise
 })
 
 // Creates a thread in the specified board.
-fastify.post('/thread/create/{board}', async (req: any, res: any): Promise<void> => {
-  await db.collection(req.params.board).add({
+fastify.post('/thread/create/:board', async (req: any, res: any): Promise<void> => {
+  console.log("Accessed method!")
+  let username = (req.session.jwt != null) ? await verifyToken(req) : 'Anonymous'
 
+  console.log("Adding post...")
+  await db.collection(req.params.board).add({
+    username: username,
+    creationDate: new Date(),
+    title: req.body.title,
+    content: req.body.content,
+    replies: []
   })
+
+  res.code(201).send({ message: "Success!" })
 })
 
 // Creates a reply under the specified thread.
-fastify.post('/reply/create/{thread}', async (req: any, res: any): Promise<void> => {
+fastify.post('/reply/create/:thread', async (req: any, res: any): Promise<void> => {
 
 })
 //endregion
 
 //region User Functions
 // Allows a user to edit a thread they previously made.
-fastify.put('/thread/edit/{thread}', async (req: any, res: any): Promise<void> => {
+fastify.put('/thread/edit/:thread', async (req: any, res: any): Promise<void> => {
 
 })
 
-fastify.delete('/thread/delete/{thread}', async (req: any, res: any): Promise<void> => {
+fastify.delete('/thread/delete/:thread', async (req: any, res: any): Promise<void> => {
 
 })
 
 // Allows a user to edit a reply they previously made.
-fastify.put('/reply/edit/{reply}', async (req: any, res: any): Promise<void> => {
+fastify.put('/reply/edit/:reply', async (req: any, res: any): Promise<void> => {
 
 })
 //endregion
 
 //region Admin Functions
-fastify.put('/user/ban/{id}', async (req: any, res: any): Promise<void> => {
+fastify.put('/user/ban/:id', async (req: any, res: any): Promise<void> => {
 
 })
 
-fastify.post('/blacklist/{ip}', async (req: any, res: any): Promise<void> => {
+fastify.post('/blacklist/:ip', async (req: any, res: any): Promise<void> => {
 
 })
 //endregion
@@ -159,8 +179,9 @@ fastify.post('/blacklist/{ip}', async (req: any, res: any): Promise<void> => {
 //region Developer Functions
 // Used to test whether the backend is available. Sends out instance information.
 fastify.get('/dev/test', async (req: any, res: any): Promise<void> => {
-  if(verifyDeveloper(req)) {
-    let timeActiveInMilliseconds = new Date() - instanceStartTime
+  if(await verifyDeveloper(req)) {
+    let currentTime: any = new Date()
+    let timeActiveInMilliseconds = currentTime - instanceStartTime
 
     res.code(200).send({
       name: "Beatrice -- Forum2 Backend",
@@ -173,13 +194,13 @@ fastify.get('/dev/test', async (req: any, res: any): Promise<void> => {
 
 // Provides a list of all available routes and their information.
 fastify.get('/dev/routes', async (req: any, res: any): Promise<void> => {
-  if(verifyDeveloper(req)) res.code(200).send({ routes: fastify.routes })
+  if(await verifyDeveloper(req)) res.code(200).send({ routes: fastify.routes })
   else res.code(403).send({ error: 'Invalid Credentials!' })
 })
 
 // Provides a status for each available route.
 fastify.get('/dev/status', async (req: any, res: any): Promise<void> => {
-  if(verifyDeveloper(req)) res.code(200).send({ routeStatus: this.stats() })
+  if(await verifyDeveloper(req)) res.code(200).send({ routeStatus: fastify.stats() })
   else res.code(403).send({ error: 'Invalid Credentials!' })
 })
 //endregion
