@@ -44,4 +44,4 @@ async function verifyToken(req: any): Promise<string | undefined> {
 
 async function verifyDeveloper(req: any): Promise<boolean | undefined> { return verifyToken(req) === process.env.DEV_USERNAME }
 
-export { verifyToken, verifyDeveloper }
+export { generateToken, verifyToken, verifyDeveloper }

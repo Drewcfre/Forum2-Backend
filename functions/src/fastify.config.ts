@@ -13,7 +13,9 @@ fastify.register(require('@fastify/helmet'), {
   global: true,
   contentSecurityPolicy: {
     directives: {
-      // Put header config stuff here later.
+      'child-src':   'self',
+      'connect-src': 'https://forum2-dun.vercel.app',
+      'frame-src':   'none',
     }
   },
   crossOriginEmbedderPolicy: true,
@@ -31,7 +33,16 @@ fastify.register(require('@fastify/helmet'), {
 })
 
 fastify.register(require('@fastify/cookie'))
-fastify.register(require('@fastify/session'), { secret: process.env.SESSION_SECRET })
+fastify.register(require('@fastify/session'), {
+  secret: process.env.SESSION_SECRET ,
+  cookie: {
+    secure:   true,
+    httpOnly: true,
+    maxAge:   86400000
+  },
+  saveUnintialized: false,
+  rolling:          true
+})
 
 fastify.ready()
 export { fastify }

@@ -4,7 +4,7 @@ import {onRequest} from 'firebase-functions/https'
 import bcrypt from 'bcrypt'
 
 import { fastify } from './fastify.config'
-import { verifyToken, verifyDeveloper } from './jwt.auth'
+import { generateToken, verifyToken, verifyDeveloper } from './jwt.auth'
 
 const instanceStartTime = new Date()
 
@@ -14,53 +14,92 @@ const db = admin.firestore();
 //region Account Auth Functions
 // Recieves and parses sign up data, creating a new user account if all conditions are met.
 fastify.post('/user/register', async (req: any, res: any): Promise<void> => {
-  let verifyKey = crypto.randomUUID().toString()
-  console.log(`(${verifyKey}): Registering user...`)
+  let regKey = crypto.randomUUID().toString()
+  console.log(`(${regKey}): Registering user...`)
 
   let { username, password, email } = req.body
 
   if(!username || username.trim() === '') {
-    console.log(`(${verifyKey}): Invalid username!`)
+    console.log(`(${regKey}): Invalid username!`)
     res.code(400).send({ error: 'Invalid username!' })
   }
   if(!password || password.trim() === '') {
-    console.log(`(${verifyKey}): Invalid password!`)
+    console.log(`(${regKey}): Invalid password!`)
     res.code(400).send({ error: 'Invalid password!' })
   }
   if(!email || email.trim() === '') {
-    console.log(`(${verifyKey}): Invalid email!`)
+    console.log(`(${regKey}): Invalid email!`)
     res.code(400).send({ error: 'Invalid email!' })
   }
 
-  console.log(`(${verifyKey}): Valid credentials recieved!`)
+  console.log(`(${regKey}): Valid credentials recieved!`)
 
   if(await db.collection('users').where('username', '==', username)) {
-    console.log(`(${verifyKey}): Username taken!`)
+    console.log(`(${regKey}): Username taken!`)
     res.code(400).send({ error: 'Username taken!' })
   }
 
   try {
-      console.log(`(${verifyKey}): Hashing password...`)
+      console.log(`(${regKey}): Hashing password...`)
       password = bcrypt.hashSync(password, 8)
-      console.log(`(${verifyKey}): Password hashed!`)
+      console.log(`(${regKey}): Password hashed!`)
 
-      console.log(`(${verifyKey}): Creating account...`)
+      console.log(`(${regKey}): Creating account...`)
       const account = await db.collection('users').add({
-        username: username,
-        password: password,
-        email:    email
+        username:  username,
+        password:  password,
+        email:     email,
+        verifyKey: crypto.randomUUID().toString()
       })
-      console.log(`(${verifyKey}): User ${account.insertedId} registered!`)
-
-
+      console.log(`(${regKey}): User ${account.insertedId} registered!`)
+      req.session.jwt = generateToken(username)
+      res.code(200).send({ registered: true })
   }
   catch (error) {
-      console.error(`(${verifyKey}): Error registering user: ${error}`)
+      console.error(`(${regKey}): Error registering user: ${error}`)
       res.code(500).send({ error: 'Internal server error! Please try again later!' })
   }
 })
 
+fastify.post('/user/login', async (req: any, res: any): Promise<void> => {
+  let regKey = crypto.randomUUID().toString()
+  console.log(`(${regKey}): Logging in user...`)
 
+  let { username, password } = req.body
+
+  if(!username || username.trim() === '') {
+    console.log(`(${regKey}): Invalid username!`)
+    res.code(400).send({ error: 'Invalid username!' })
+  }
+  if(!password || password.trim() === '') {
+    console.log(`(${regKey}): Invalid password!`)
+    res.code(400).send({ error: 'Invalid password!' })
+  }
+
+  console.log(`(${regKey}): Valid credentials recieved! Searching for account...`)
+  const account = await db.collection('users').where('username', '==', username).get()
+  if(!account) {
+    console.log(`(${regKey}): Invalid username!`)
+    res.code(400).send({ error: 'Invalid username!' })
+  }
+
+  console.log(`(${regKey}): Account found! Comparing passwords...`)
+  if(bcrypt.compareSync(password, account.password)) {
+      console.log(`(${regKey}): Password matches! User ${username} logged in! Generating JWT token...`)
+      req.session.jwt = generateToken(username)
+      res.code(200).send({ loggedIn: true })
+  }
+  else {
+    console.log(`(${regKey}): Incorrect password!`)
+    res.code(400).send({ error: 'Incoorect password!' })
+  }
+})
+
+fastify.get('/user/logout', async (req: any, res: any): Promise<void> => {
+  console.log(`(${regKey}): User logging out!`)
+  req.session.destroy()
+  res.code(200).send({ loggedIn: false })
+})
 //endregion
 
 // Access Levels
