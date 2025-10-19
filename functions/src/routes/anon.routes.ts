@@ -1,54 +1,144 @@
 import {FastifyReply} from "fastify";
 
-import {db} from "../lib/instance";
 import {verifyToken} from "../functions/jwt.auth";
+import {bucket, db} from "../lib/instance";
 
-// TODO: Clean this up at some point.
+// Account check is commented out for now since I don't yet have Captcha implemented.
 
 /**
- * Routes that require no authorization. Anonymous access requires the user to
- * solve a Captcha, however.
+ * Checks if the given username is valid.
+ * @param {string} username The username to check.
+ * @return {Promise<boolean>} True if the user is valid, false otherwise.
+ */
+/* async function accountCheck(username: string): Promise<boolean> {
+    return await db.collection("users")
+        .where("username", "==", username)
+        .where("verified", "==", true)
+        .get()
+        .then((snapshot: any): boolean => !snapshot.empty);
+}*/
+
+/**
+ * Routes that require no authorization. Anonymous access requires the user to solve a Captcha, however.
  * @param {any} fastify The fastify instance.
  * @param {any} opts Options for the route.
  */
 export async function anonRoutes(fastify: any, opts: any): Promise<void> {
-  fastify.get("/catalog/:board/:sort}/:dir",
-    async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-      await db.collection(req.params.board)
-        .orderBy(req.params.sort, req.params.dir)
-        .get().then((snapshot: any): void => {
-          const data = snapshot.docs.map((doc: any) => doc.data());
-          res.code(200).send(data);
-        }).catch((err: any): void => {
-          res.code(500).send({error: "Error getting documents: " + err});
+    fastify.get("/catalog/:board", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        // TODO: When active posts are implemented, only return active posts here.
+        await db.collection(req.params.board).get().then((snapshot: any): FastifyReply => {
+            const data = snapshot.docs.map((doc: any) => doc.data());
+            return res.code(200).send(data);
         });
 
-      return res;
-    }
-  );
+        return res.code(500).send({error: "An unknown error occurred!"});
+    });
 
-  fastify.post("/create/:board",
-    async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-      const username = (req.session.jwt != null) ?
-        await verifyToken(req) : "Anonymous";
+    fastify.post("/create/:board", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        const username: string = await verifyToken(req) || "Anonymous";
 
-      await db.collection(req.params.board).add({
-        username: username,
-        creationDate: new Date(),
-        title: req.body.title,
-        content: req.body.content,
-        replies: [],
-      });
+        // TODO: Add Captcha verification here for anonymous users.
+        // TODO: Add eventual rate-limiting here for anonymous users.
+        // TODO: Eventually add post time limits here for all users.
 
-      return res.code(201).send({message: "Success!"});
-    }
-  );
+        // if (!await accountCheck(username))
 
-  // TODO: Implement reply creation.
+        let url = "";
 
-  fastify.post("/reply/:thread",
-    async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-      return res.code(500).send({error: "Not implemented!"});
-    }
-  );
+        const file: any = await req.file();
+        if (file) {
+            const {filename, mimetype} = file;
+            const filePath = `/uploads/${Date.now()}_${filename}`;
+
+            const uploadStream = bucket.file(filePath).createWriteStream({
+                metadata: {contentType: mimetype},
+            });
+
+            await new Promise((resolve, reject): void => {
+                file.file.pipe(uploadStream)
+                    .on("finish", resolve)
+                    .on("error", reject);
+            });
+
+            url = await bucket.file(filePath).getSignedUrl({
+                action: "read",
+                expires: "03-01-2500", // Not a permanent URL, but I don't expect anyone in 2500 to be complaining about it.
+            }).then((urls: string[]): string => urls[0]);
+        }
+
+        await db.collection(req.params.board).add({
+            UUID: crypto.randomUUID(),
+            username: username,
+            creationDate: new Date(),
+            url: url,
+            title: req.body.title,
+            content: req.body.content,
+            replies: [],
+            rating: 0.0,
+            timeLimit: null, // No time limit by default for now.
+            active: true, // In the future, posts will be deactivated after their time limit expires and no longer show up.
+        });
+
+        return res.code(201).send({message: "Success!"});
+    });
+
+    fastify.post("/reply/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        const username: string = await verifyToken(req) || "Anonymous";
+
+        // TODO: Add Captcha verification here for anonymous users.
+        // TODO: Add eventual rate-limiting here for anonymous users.
+        // TODO: Eventually add post time limits here for all users.
+
+        // if (!await accountCheck(username))
+
+
+        // TODO: Should probably make image uploads a function since this is repeated code.
+
+        let url = "";
+
+        const file: any = await req.file();
+        if (file) {
+            const {filename, mimetype} = file;
+            const filePath = `/uploads/${Date.now()}_${filename}`;
+
+            const uploadStream = bucket.file(filePath).createWriteStream({
+                metadata: {contentType: mimetype},
+            });
+
+            await new Promise((resolve, reject): void => {
+                file.file.pipe(uploadStream)
+                    .on("finish", resolve)
+                    .on("error", reject);
+            });
+
+            url = await bucket.file(filePath).getSignedUrl({
+                action: "read",
+                expires: "03-01-2500", // Not a permanent URL, but I don't expect anyone in 2500 to be complaining about it.
+            }).then((urls: string[]): string => urls[0]);
+        }
+
+        db.collection(req.params.board)
+            .where("UUID", "==", req.params.thread)
+            .get()
+            .then(async (snapshot: any): Promise<FastifyReply> => {
+                if (snapshot.empty) return res.code(404).send({error: "Thread not found!"});
+
+                const threadRef = snapshot.docs[0].ref;
+                const threadData = snapshot.docs[0].data();
+
+                await threadRef.update({
+                    replies: threadData.replies.concat([{
+                        UUID: crypto.randomUUID(),
+                        username: username,
+                        creationDate: new Date(),
+                        url: url,
+                        content: req.body.content,
+                    }]),
+                });
+
+                return res.code(201).send({message: "Reply added!"});
+            });
+
+        return res.code(500).send({error: "An unknown error occurred!"});
+    });
 }
