@@ -12,6 +12,9 @@ fastify.register(anonRoutes, {prefix: "/anon"});
 import {devRoutes} from "./routes/dev.routes";
 fastify.register(devRoutes, {prefix: "/dev"});
 
+import {toolRoutes} from "./routes/tools";
+fastify.register(toolRoutes, {prefix: "/tools"});
+
 import {userAuthRoutes} from "./routes/user.auth";
 fastify.register(userAuthRoutes, {prefix: "/user"});
 
@@ -21,5 +24,5 @@ fastify.register(userRoutes, {prefix: "/user"});
 
 // Reroutes all requests to this cloud function through the Fastify instance.
 exports.app = onRequest(async (req: any, res: any): Promise<void> => {
-  fastify.server.emit("request", req, res);
+    fastify.server.emit("request", req, res);
 });

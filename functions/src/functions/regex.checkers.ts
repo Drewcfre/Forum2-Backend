@@ -6,7 +6,7 @@
  * @return {boolean} True if the username is valid, false otherwise.
  */
 export function verifyUsername(username: string): boolean {
-  return new RegExp("^[A-Za-z][A-Za-z0-9_]{2,19}$").test(username);
+    return new RegExp("^[A-Za-z][A-Za-z0-9_]{2,19}$").test(username);
 }
 
 /**
@@ -17,9 +17,7 @@ export function verifyUsername(username: string): boolean {
  * @return {boolean} True if the password is valid, false otherwise.
  */
 export function verifyPassword(password: string): boolean {
-  return new RegExp(
-    "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s]).{8,20}$"
-  ).test(password);
+    return new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s]).{8,20}$").test(password);
 }
 
 /**
@@ -29,9 +27,7 @@ export function verifyPassword(password: string): boolean {
  * @return {boolean} True if the email is valid, false otherwise.
  */
 export function verifyEmail(email: string): boolean {
-  return new RegExp(
-    "^(?=.{6, 60}$)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$\\n"
-  ).test(email);
+    return new RegExp("^(?=.{6,60}$)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").test(email);
 }
 
 /**
@@ -41,7 +37,7 @@ export function verifyEmail(email: string): boolean {
  * @return {boolean} True if the title is valid, false otherwise.
  */
 export function verifyTitle(title: string): boolean {
-  return title.length <= 100;
+    return title.length <= 100;
 }
 
 /**
@@ -52,7 +48,7 @@ export function verifyTitle(title: string): boolean {
  * @return {boolean} True if the description is valid, false otherwise.
  */
 export function verifyDescription(description: string): boolean {
-  return description.length <= 300;
+    return description.length <= 300;
 }
 // endregion
 
@@ -64,7 +60,7 @@ export function verifyDescription(description: string): boolean {
  * @return {boolean} True if the title is valid, false otherwise.
  */
 export function verifyPostTitle(title: string): boolean {
-  return title.length >= 1 && title.length <= 100;
+    return title.length >= 1 && title.length <= 100;
 }
 
 /**
@@ -74,6 +70,6 @@ export function verifyPostTitle(title: string): boolean {
  * @return {boolean} True if the content is valid, false otherwise.
  */
 export function verifyReplyContent(content: string): boolean {
-  return content.length >= 1 && content.length <= 1000;
+    return content.length >= 1 && content.length <= 1000;
 }
 // endregion
