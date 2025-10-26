@@ -55,7 +55,7 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
 
             await sendEmail(
                 email, "Verify your account",
-                `Verify your account: http://127.0.0.1:5001/forum2-1134f/us-central1/app/verify/${verifyKey}`,
+                `Verify your account: http://127.0.0.1:5001/forum2-1134f/us-central1/app/user/verify/${verifyKey}`,
             );
             return res.code(200).send({registered: true});
         } catch (error) {
@@ -64,17 +64,21 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
     });
 
     fastify.get("/verify/:key", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        const userCheck: any = await db.collection("users")
-            .where("verifyKey", "==", req.params.key).limit(1).get();
+        const userCheck: any = await db.collection("users").where("verifyKey", "==", req.params.key).limit(1).get();
 
-        if (userCheck.exists) {
-            req.session.jwt = generateToken(userCheck.data().username);
-            await db.collection("users").doc(userCheck.id).update({
-                password: userCheck.data().newPassword,
-                email: userCheck.data().newEmail,
+        if (!userCheck.empty) {
+            const userDoc = userCheck.docs[0];
+            const userRef = db.collection("users").doc(userDoc.id);
+
+            req.session.jwt = generateToken(userDoc.data().username);
+
+            await userRef.update({
+                password: userDoc.data().newPassword,
+                email: userDoc.data().newEmail,
                 verified: true,
                 verifyKey: "",
             });
+
             return res.code(200).send({verified: true});
         } else {
             return res.code(400).send({error: "Invalid verification key!"});
@@ -92,13 +96,15 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         if (!user.data().verified) return res.code(400).send({error: "Account not verified!"});
 
         if (bcrypt.compareSync(password, user.data().password)) {
-            req.session.jwt = generateToken(username);
+            req.session.jwt = await generateToken(username);
             return res.code(200).send({loggedIn: true});
         } else return res.code(400).send({error: "Incorrect password!"});
     });
 
     fastify.get("/check", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        return res.code(200).send({loggedIn: req.session.jwt.exists});
+        const user: any = await accountCheck(await verifyToken(req) || "");
+        if (user === null) return res.code(200).send({loggedIn: false});
+        return res.code(200).send({loggedIn: true});
     });
 
     fastify.get("/logout",

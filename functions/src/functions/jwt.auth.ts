@@ -38,6 +38,9 @@ export async function verifyToken(req: any): Promise<string | undefined> {
 
     try {
         const token = req.session.jwt;
+
+        console.log(req.session.jwt);
+
         if (!token || token.trim() === "") {
             console.log("Token was not found!");
             return "";
