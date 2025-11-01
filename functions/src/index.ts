@@ -1,4 +1,4 @@
-import {onRequest} from "firebase-functions/https";
+import {onRequest} from "firebase-functions/v2/https";
 
 import {fastify} from "./fastify.config";
 

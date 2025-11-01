@@ -2,8 +2,24 @@ import Fastify, {FastifyReply} from "fastify";
 // eslint-disable-next-line new-cap
 const fastify = Fastify({logger: true});
 
-import fastifyMultipart from "@fastify/multipart";
-fastify.register(fastifyMultipart); // TODO: I should probably add file limits later.
+import cors from "@fastify/cors";
+fastify.register(cors, {
+    origin: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+    preflightContinue: false,
+    credentials: true,
+});
+
+fastify.addHook("onSend", async (request, reply, payload) => {
+    reply.header("Access-Control-Allow-Origin", "http://localhost:4173");
+    reply.header("Vary", "Origin");
+    return payload;
+});
+
+fastify.addHook("preHandler", async (req, reply) => {
+    console.log(`[REQ] ${req.method} ${req.url} Origin=${req.headers.origin}`);
+});
 
 import fastifyRateLimit from "@fastify/rate-limit";
 fastify.register(fastifyRateLimit, {global: true, max: 10, ban: 10, timeWindow: 1000});
@@ -31,11 +47,13 @@ fastify.register(fastifyHelmet, {
             "child-src": [
                 "https://forum2-dun.vercel.app",
                 "https://127.0.0.1",
+                "http://localhost:4173",
                 "'self'",
             ],
             "connect-src": [
                 "https://forum2-dun.vercel.app",
                 "https://127.0.0.1",
+                "http://localhost:4173",
                 "'self'",
             ],
             "frame-src": "'none'",

@@ -1,9 +1,20 @@
 import admin from "firebase-admin";
-admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    storageBucket: "replace-this",
-});
+import path from "path";
 
-export const bucket = admin.storage().bucket();
+const serviceAccountPath = path.resolve(__dirname, "./forum2-1134f-firebase-adminsdk-fbsvc-be6b303c52.json");
+console.log("Loading service account from:", serviceAccountPath);
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const serviceAccount = require(serviceAccountPath);
+
+
+if (admin.apps.length === 0) {
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: "gs://forum2-1134f.firebasestorage.app",
+    });
+}
+
+export const bucket = admin.storage().bucket("forum2-1134f.firebasestorage.app");
 export const db = admin.firestore();
 export const instanceStartTime: Date = new Date();
