@@ -30,5 +30,7 @@ module.exports = {
         "import/no-unresolved": 0,
         "indent": ["error", 4],
         "max-len": ["error", {"code": 130}],
+        "@typescript-eslint/no-explicit-any": 0,
+        "@typescript-eslint/no-unused-vars": 0,
     },
 };

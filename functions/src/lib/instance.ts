@@ -1,12 +1,12 @@
 import admin from "firebase-admin";
 import path from "path";
 
+// TODO: This cannot be safe.
 const serviceAccountPath = path.resolve(__dirname, "./forum2-1134f-firebase-adminsdk-fbsvc-be6b303c52.json");
 console.log("Loading service account from:", serviceAccountPath);
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const serviceAccount = require(serviceAccountPath);
-
 
 if (admin.apps.length === 0) {
     admin.initializeApp({

@@ -1,3 +1,5 @@
+// TODO: Review and clean up Fastify config.
+
 import Fastify, {FastifyReply} from "fastify";
 // eslint-disable-next-line new-cap
 const fastify = Fastify({logger: true});

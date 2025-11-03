@@ -4,21 +4,31 @@ import {verifyToken} from "../functions/jwt.auth";
 import {bucket, db} from "../lib/instance";
 
 import sharp from "sharp";
-
-// Account check is commented out for now since I don't yet have Captcha implemented.
+import {verifyPostTitle, verifyReplyContent} from "../functions/regex.checkers";
 
 /**
- * Checks if the given username is valid.
- * @param {string} username The username to check.
- * @return {Promise<boolean>} True if the user is valid, false otherwise.
+ * Saves image data to storage and returns the associated URL.
+ * @param {any} imageData The image to save.
+ * @param {string} board The board the image was sent to.
+ * @return {Promise<string>} The created URL.
  */
-/* async function accountCheck(username: string): Promise<boolean> {
-    return await db.collection("users")
-        .where("username", "==", username)
-        .where("verified", "==", true)
-        .get()
-        .then((snapshot: any): boolean => !snapshot.empty);
-}*/
+async function submitImageToBucket(imageData: any, board: string): Promise<string> {
+    const {filename, mimetype, data} = await imageData;
+    const imgBuffer = Buffer.from(data, "base64");
+
+    const outputBuffer = await sharp(imgBuffer)
+        .webp({quality: 80, effort: 3})
+        .toBuffer();
+
+    await bucket.file(`/uploads/${board}/${filename}`).save(outputBuffer, {
+        metadata: {contentType: mimetype},
+    });
+
+    // Not a permanent URL, but I don't expect anyone in 2500 to be complaining about it.
+    return await bucket.file(`/uploads/${filename}`)
+        .getSignedUrl({action: "read", expires: "03-01-2500"})
+        .then((urls: string[]): string => urls[0]);
+}
 
 /**
  * Routes that require no authorization. Anonymous access requires the user to solve a Captcha, however.
@@ -41,29 +51,16 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
 
     fastify.post("/create/:board", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         try {
-            console.log("Request made! Updated!");
-
             const username: string = await verifyToken(req) || "Anonymous";
+            if (username == "Anonymous") {
+                if (req.session.captcha != req.body.captcha) {
+                    return res.code(401).send({error: "Incorrect CAPTCHA!"});
+                }
+            }
 
-            const {filename, mimetype, data} = await req.body.image;
-            const imgBuffer = Buffer.from(data, "base64");
+            if (!verifyPostTitle(req.body.title)) return res.code(400).send({error: "Invalid title!"});
 
-            const outputBuffer = await sharp(imgBuffer)
-                .webp({quality: 80, effort: 3})
-                .toBuffer();
-
-            await bucket.file(`/uploads/${filename}`).save(outputBuffer, {
-                metadata: {contentType: mimetype},
-            });
-
-            // Not a permanent URL, but I don't expect anyone in 2500 to be complaining about it.
-            const url = await bucket.file(`/uploads/${filename}`)
-                .getSignedUrl({action: "read", expires: "03-01-2500"})
-                .then((urls: string[]): string => urls[0]);
-
-            // TODO: Add Captcha verification here for anonymous users.
-            // TODO: Add eventual rate-limiting here for anonymous users.
-            // TODO: Eventually add post time limits here for all users.
+            const url = await submitImageToBucket(await req.body.image, req.params.board);
 
             await db.collection(req.params.board).add({
                 UUID: crypto.randomUUID(),
@@ -86,35 +83,19 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
         }
     });
 
-    fastify.post("/reply/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/reply/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         const username: string = await verifyToken(req) || "Anonymous";
+        if (username == "Anonymous") {
+            if (req.session.captcha != req.body.captcha) {
+                return res.code(401).send({error: "Incorrect CAPTCHA!"});
+            }
+        }
 
-        // TODO: Should probably make image uploads a function since this is repeated code.
+        if (!verifyReplyContent(req.body.content)) return res.code(400).send({error: "Invalid content!"});
 
-        const {filename, mimetype, data} = req.body.image;
-        const imgBuffer = Buffer.from(data, "base64");
-
-        const outputBuffer = await sharp(imgBuffer)
-            .webp({quality: 80, effort: 3})
-            .toBuffer();
-
-        await bucket.file(`/uploads/${filename}`).save(outputBuffer, {
-            metadata: {contentType: mimetype},
-        });
-
-        // Not a permanent URL, but I don't expect anyone in 2500 to be complaining about it.
-        const url = await bucket.file(`/uploads/${filename}`)
-            .getSignedUrl({action: "read", expires: "03-01-2500"})
-            .then((urls: string[]): string => urls[0]);
-
-        // TODO: Add Captcha verification here for anonymous users.
-        // TODO: Add eventual rate-limiting here for anonymous users.
-        // TODO: Eventually add post time limits here for all users.
-
-        db.collection(req.params.board)
-            .where("UUID", "==", req.params.thread)
-            .get()
-            .then(async (snapshot: any): Promise<FastifyReply> => {
+        const url = await submitImageToBucket(await req.body.image, req.params.board);
+        db.collection(req.params.board).where("UUID", "==", req.params.thread)
+            .get().then(async (snapshot: any): Promise<FastifyReply> => {
                 if (snapshot.empty) return res.code(404).send({error: "Thread not found!"});
 
                 const threadRef = snapshot.docs[0].ref;

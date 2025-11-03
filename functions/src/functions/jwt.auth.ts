@@ -39,18 +39,16 @@ export async function verifyToken(req: any): Promise<string | undefined> {
     try {
         const token = req.session.jwt;
 
-        console.log(req.session.jwt);
-
         if (!token || token.trim() === "") {
             console.log("Token was not found!");
             return "";
         }
 
-        const verified = jwt.verify(token, secret) as { username: string };
+        const verified = jwt.verify(token, secret) as {username: string};
         if (verified) return verified.username;
         else return "";
     } catch (error) {
-        console.error("Error verifying token:", error);
+        console.error("Error verifying token: ", error);
         return "";
     }
 }
@@ -62,5 +60,6 @@ export async function verifyToken(req: any): Promise<string | undefined> {
  * false otherwise.
  */
 export async function verifyDeveloper(req: any): Promise<boolean | undefined> {
+    // TODO: Come up with a more secure and sustainable developer verify method.
     return await verifyToken(req) === process.env.DEV_USERNAME;
 }

@@ -12,8 +12,8 @@ export async function toolRoutes(fastify: any, opts: any): Promise<void> {
             size: 8,
             ignoreChars: "0o1i",
             noise: 4,
-            color: true,
-            background: "#cc9966",
+            color: false,
+            background: "#000",
         });
 
         req.session.captcha = captcha.text;

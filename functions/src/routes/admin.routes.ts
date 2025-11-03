@@ -22,24 +22,35 @@ async function adminCheck(username: string): Promise<boolean> {
  * @param {any} fastify The fastify instance.
  */
 export async function adminRoutes(fastify: any): Promise<void> {
-    fastify.get("/reports", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.get("/users/all", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         if (!await adminCheck(await verifyToken(req) || "")) return res.code(403).send({error: "Invalid Credentials!"});
 
-        await db.collection("reports").get().then((snapshot: any): FastifyReply => {
-            const data = snapshot.docs.map((doc: any): any => doc.data());
+        await db.collection("users").get().then((snapshot: any): FastifyReply => {
+            const data: any[] = [];
+
+            snapshot.forEach((doc: any): void => {
+                data.push({
+                    username: doc.data().get("username"),
+                    title: doc.data().get("title"),
+                    email: doc.data().get("email"),
+                    created: doc.data().get("creationDate"),
+                    verified: doc.data().get("verified"),
+                    banned: doc.data().get("banned"),
+                    admin: doc.data().get("admin"),
+                });
+            });
+
             return res.code(200).send(data);
         });
 
         return res.code(500).send({error: "An unknown error occurred!"});
     });
 
-    fastify.put("/ban/:uuid", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.put("/ban/:username", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         if (!await adminCheck(await verifyToken(req) || "")) return res.code(403).send({error: "Invalid Credentials!"});
 
-        await db.collection("users")
-            .where("UUID", "==", req.params.uuid)
-            .get()
-            .then((snapshot: any): FastifyReply => {
+        await db.collection("users").where("username", "==", req.params.username)
+            .get().then((snapshot: any): FastifyReply => {
                 if (snapshot.empty) return res.code(404).send({error: "User not found!"});
 
                 if (snapshot.docs[0].data().banned) {
@@ -54,24 +65,36 @@ export async function adminRoutes(fastify: any): Promise<void> {
         return res.code(500).send({error: "An unknown error occurred!"});
     });
 
-    fastify.post("/blacklist/:ip", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.get("/reports", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         if (!await adminCheck(await verifyToken(req) || "")) return res.code(403).send({error: "Invalid Credentials!"});
 
-        await db.collection("blacklist")
-            .where("ip", "==", req.params.ip)
-            .get()
-            .then((snapshot: any): FastifyReply => {
-                if (!snapshot.empty) return res.code(400).send({error: "IP already blacklisted!"});
-
-                db.collection("blacklist").add({
-                    ip: req.params.ip,
-                    dateAdded: new Date(),
-                    reason: req.body.reason || "No reason provided.",
-                });
-
-                return res.code(201).send({message: "IP blacklisted!"});
-            });
+        await db.collection("Admin").get().then((snapshot: any): FastifyReply => {
+            const data = snapshot.docs.map((doc: any): any => doc.data());
+            return res.code(200).send(data);
+        });
 
         return res.code(500).send({error: "An unknown error occurred!"});
     });
+
+    // TODO: Uncomment and test once IP tracking is implemented (if ever).
+    // fastify.post("/blacklist/:ip", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    //     if (!await adminCheck(await verifyToken(req) || "")) return res.code(403).send({error: "Invalid Credentials!"});
+    //
+    //     await db.collection("blacklist")
+    //         .where("ip", "==", req.params.ip)
+    //         .get()
+    //         .then((snapshot: any): FastifyReply => {
+    //             if (!snapshot.empty) return res.code(400).send({error: "IP already blacklisted!"});
+    //
+    //             db.collection("blacklist").add({
+    //                 ip: req.params.ip,
+    //                 dateAdded: new Date(),
+    //                 reason: req.body.reason || "No reason provided.",
+    //             });
+    //
+    //             return res.code(201).send({message: "IP blacklisted!"});
+    //         });
+    //
+    //     return res.code(500).send({error: "An unknown error occurred!"});
+    // });
 }

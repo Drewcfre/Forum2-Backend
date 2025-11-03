@@ -6,6 +6,8 @@ import {generateToken, verifyToken} from "../functions/jwt.auth";
 import {verifyUsername, verifyPassword, verifyEmail, verifyTitle, verifyDescription} from "../functions/regex.checkers";
 import {db} from "../lib/instance";
 
+// TODO: needs to be fully reviewed and retested.
+
 /**
  * Checks if an account with the given username exists and returns the user.
  * @param {string} username The username to check.
