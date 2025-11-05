@@ -12,9 +12,11 @@ if (admin.apps.length === 0) {
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         storageBucket: "gs://forum2-1134f.firebasestorage.app",
+        databaseURL: "https://forum2-1134f-default-rtdb.firebaseio.com/",
     });
 }
 
 export const bucket = admin.storage().bucket("forum2-1134f.firebasestorage.app");
 export const db = admin.firestore();
+export const realtime = admin.database();
 export const instanceStartTime: Date = new Date();

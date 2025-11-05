@@ -1,9 +1,1 @@
-{
-  "indexes": [
-    {
-      "collectionGroup": "tech",
-      "queryScope": "COLLECTION",
-    }
-  ],
-  "fieldOverrides": []
-}
+{}
