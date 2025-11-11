@@ -1,35 +1,10 @@
 import {FastifyReply} from "fastify";
 
+import {checkLanguage, checkThreats} from "../functions/automod";
+import {submitImageToBucket} from "../functions/image.handler";
 import {verifyToken} from "../functions/jwt.auth";
-import {bucket, db} from "../lib/instance";
-
-import sharp from "sharp";
 import {verifyPostTitle, verifyReplyContent} from "../functions/regex.checkers";
-
-/**
- * Saves image data to storage and returns the associated URL.
- * @param {any} imageData The image to save.
- * @param {string} board The board the image was sent to.
- * @return {Promise<string>} The created URL.
- */
-async function submitImageToBucket(imageData: any, board: string): Promise<string> {
-    const {filename, mimetype, data} = await imageData;
-    const imgBuffer = Buffer.from(data, "base64");
-
-    const outputBuffer = await sharp(imgBuffer)
-        .webp({quality: 80, effort: 3})
-        .toBuffer();
-
-    await bucket.file(`/uploads/${board}/${filename}`).save(outputBuffer, {
-        metadata: {contentType: mimetype},
-    });
-
-    // Not a permanent URL, but I don't expect anyone in 2500 to be complaining about it.
-    return await bucket.file(`/uploads/${filename}`)
-        .getSignedUrl({action: "read", expires: "03-01-2500"})
-        .then((urls: string[]): string => urls[0]);
-}
-
+import {db, realtime} from "../lib/instance";
 /**
  * Routes that require no authorization. Anonymous access requires the user to solve a Captcha, however.
  * @param {any} fastify The fastify instance.
@@ -37,13 +12,9 @@ async function submitImageToBucket(imageData: any, board: string): Promise<strin
  */
 export async function anonRoutes(fastify: any, opts: any): Promise<void> {
     fastify.get("/catalog/:board", async (req: any, res: FastifyReply): Promise<any> => {
-        // TODO: When active posts are implemented, only return active posts here.
         try {
-            await db.collection(req.params.board).get().then((snapshot: any): FastifyReply => {
-                const data = snapshot.docs.map((doc: any) => doc.data());
-                console.log(data);
-                return res.code(200).send({body: data});
-            });
+            const ref = realtime.ref(`board/${req.params.board}`);
+            return res.code(200).send({body: await ref.get()});
         } catch (err) {
             return res.code(500).send({error: "An unknown error occurred!"});
         }
@@ -52,49 +23,67 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
     fastify.post("/create/:board", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         try {
             const username: string = await verifyToken(req) || "Anonymous";
-            if (username == "Anonymous") {
-                if (req.session.captcha != req.body.captcha) {
-                    return res.code(401).send({error: "Incorrect CAPTCHA!"});
-                }
-            }
+
+            // if (username == "Anonymous") {
+            //     if (req.session.captcha != req.body.captcha) {
+            //         return res.code(401).send({error: "Incorrect CAPTCHA!"});
+            //     }
+            // }
 
             if (!verifyPostTitle(req.body.title)) return res.code(400).send({error: "Invalid title!"});
 
-            const url = await submitImageToBucket(await req.body.image, req.params.board);
+            let url = "";
+            if (req.body.image) url = await submitImageToBucket(await req.body.image, req.params.board);
+
+            const title = checkLanguage(req.body.title);
+            const content = checkLanguage(req.body.content);
+
+            const flagged = checkThreats(title) || checkThreats(content);
 
             await db.collection(req.params.board).add({
                 UUID: crypto.randomUUID(),
                 username: username,
                 creationDate: new Date(),
                 url: url,
-                title: req.body.title,
-                content: req.body.content,
+                title: title,
+                content: content,
                 replies: [],
                 rating: 3.0,
                 rateCount: 1,
-                timeLimit: null, // No time limit by default for now.
-                active: true, // In the future, posts will be deactivated after their time limit expires and no longer show up.
+                flagged: flagged,
+                live: req.body.live,
             });
 
-            return res.code(201).send({message: "Success!"});
+            if (req.body.live) {
+                const ref = realtime.ref(`board/${req.params.board}/${req.params.thread}`);
+                await ref.set({replies: []});
+            }
+
+            return res.code(201).send({created: true});
         } catch (err) {
             console.error(err);
-            return res.code(500).send({error: "Server error"});
+            return res.code(500).send({error: "Server error!"});
         }
     });
 
     fastify.post("/reply/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         const username: string = await verifyToken(req) || "Anonymous";
-        if (username == "Anonymous") {
-            if (req.session.captcha != req.body.captcha) {
-                return res.code(401).send({error: "Incorrect CAPTCHA!"});
-            }
-        }
+
+        // if (username == "Anonymous") {
+        //     if (req.session.captcha != req.body.captcha) {
+        //         return res.code(401).send({error: "Incorrect CAPTCHA!"});
+        //     }
+        // }
 
         if (!verifyReplyContent(req.body.content)) return res.code(400).send({error: "Invalid content!"});
 
-        const url = await submitImageToBucket(await req.body.image, req.params.board);
-        db.collection(req.params.board).where("UUID", "==", req.params.thread)
+        let url = "";
+        if (req.body.image) url = await submitImageToBucket(await req.body.image, req.params.board);
+
+        const content = checkLanguage(req.body.content);
+        const flagged = checkThreats(content);
+
+        return db.collection(req.params.board).where("UUID", "==", req.params.thread)
             .get().then(async (snapshot: any): Promise<FastifyReply> => {
                 if (snapshot.empty) return res.code(404).send({error: "Thread not found!"});
 
@@ -107,13 +96,23 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
                         username: username,
                         creationDate: new Date(),
                         url: url,
-                        content: req.body.content,
+                        content: content,
+                        flagged: flagged,
                     }]),
                 });
 
-                return res.code(201).send({message: "Reply added!"});
+                return res.code(201).send({created: true});
             });
+    });
 
-        return res.code(500).send({error: "An unknown error occurred!"});
+    fastify.get("/live/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        const ref = realtime.ref(`board/${req.params.board}/${req.params.thread}`);
+        return res.code(200).send({body: ref.get()});
+    });
+
+    fastify.post("/reply/live/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        const ref = realtime.ref(`board/${req.params.board}/${req.params.thread}`);
+        await ref.set((await ref.get() + req.body.content));
+        return res.code(200).send({body: ref.get()});
     });
 }

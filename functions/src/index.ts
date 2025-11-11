@@ -1,4 +1,4 @@
-import {onSchedule} from "firebase-functions/scheduler";
+import functions from "firebase-functions/v1";
 import {onRequest} from "firebase-functions/v2/https";
 
 import {fastify} from "./fastify.config";
@@ -24,22 +24,49 @@ import {userRoutes} from "./routes/user.routes";
 fastify.register(userRoutes, {prefix: "/user"});
 // endregion
 
-// Reroutes all requests to this cloud function through the Fastify instance.
+// Reroutes all user requests to this cloud function through the Fastify instance.
 exports.app = onRequest(async (req: any, res: any): Promise<void> => {
     fastify.server.emit("request", req, res);
 });
 
 // To reduce load on the Firestore database, common queries are periodically made and saved to a Realtime database.
 // By allowing admin queries to go to the Firestore database directly, this also acts as a
-exports.updateRealtime = onSchedule("every 2 minutes", async (): Promise<void> => {
+exports.updateRealtime = functions.pubsub.schedule("every 2 minutes").onRun(async (): Promise<void> => {
+    console.log("Updating Realtime Database...");
+
     const boards = ["Main", "Anime", "Cook", "Fit", "Tech", "Vidya", "Admin"];
 
     for (const board of boards) {
         await db.collection(board).get().then((snapshot: any): void => {
             const data = snapshot.docs.map((doc: any) => doc.data());
-            const ref = realtime.ref("");
+            const ref = realtime.ref(`board/${board}`);
 
             ref.set({board: data});
         });
     }
+
+    console.log("Update Complete!");
+});
+
+// Live posts have their replies exist on a Realtime database so that potentially hundreds of requests per second
+// can be handled without straining the Firestore database. To make room for future live posts, currently active
+// live posts are deleted every hour.
+exports.clearLivePosts = functions.pubsub.schedule("every hour").onRun(async (): Promise<void> => {
+    console.log("Clearing Live Posts...");
+
+    const boards = ["Main", "Anime", "Cook", "Fit", "Tech", "Vidya", "Admin"];
+
+    for (const board of boards) {
+        await db.collection(board).where("live", "==", true).get().then((snapshot: any): void => {
+            snapshot.docs.forEach((doc: any): any => {
+                const ID: string = doc.UUID;
+                const ref = realtime.ref(`live/${ID}`);
+                ref.remove();
+
+                doc.delete();
+            });
+        });
+    }
+
+    console.log("Clear Complete!");
 });

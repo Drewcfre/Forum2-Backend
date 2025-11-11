@@ -5,8 +5,7 @@ import {sendEmail} from "../functions/email.config";
 import {generateToken, verifyToken} from "../functions/jwt.auth";
 import {verifyUsername, verifyPassword, verifyEmail, verifyTitle, verifyDescription} from "../functions/regex.checkers";
 import {db} from "../lib/instance";
-
-// TODO: needs to be fully reviewed and retested.
+import {removeImageFromBucket, submitImageToBucket} from "../functions/image.handler";
 
 /**
  * Checks if an account with the given username exists and returns the user.
@@ -176,54 +175,39 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         );
 
         return res.code(200).send({updated: "pending"});
-    }
-    );
+    });
 
-    // TODO: Add image upload and validation.
-    fastify.post("/profilePic",
-        async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-            const user: any = await accountCheck(await verifyToken(req) || "");
-            if (user === null) return res.code(400).send({error: "User not found!"});
+    fastify.post("/profilePic", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        const user: any = await accountCheck(await verifyToken(req) || "");
+        if (user === null) return res.code(400).send({error: "User not found!"});
 
-            await db.collection("users").doc(user.id).update({
-                profilePic: req.body.profilePic,
-            });
+        const url = submitImageToBucket(await req.body.image, "Profile");
 
-            return res.code(200).send({updated: true});
-        }
-    );
+        if (user.profilePic != "") await removeImageFromBucket(user.profilePic);
+        await db.collection("users").doc(user.id).update({profilePic: url});
 
-    fastify.post("/title",
-        async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-            if (!verifyTitle(req.body.title)) {
-                return res.code(400).send({error: "Invalid title!"});
-            }
+        return res.code(200).send({updated: true});
+    });
 
-            const user: any = await accountCheck(await verifyToken(req) || "");
-            if (user === null) return res.code(400).send({error: "User not found!"});
+    fastify.post("/title", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        if (!verifyTitle(req.body.title)) return res.code(400).send({error: "Invalid title!"});
 
-            await db.collection("users").doc(user.id).update({
-                title: req.body.title,
-            });
+        const user: any = await accountCheck(await verifyToken(req) || "");
+        if (user === null) return res.code(400).send({error: "User not found!"});
 
-            return res.code(200).send({updated: true});
-        }
-    );
+        await db.collection("users").doc(user.id).update({title: req.body.title});
 
-    fastify.post("/description",
-        async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-            if (!verifyDescription(req.body.description)) {
-                return res.code(400).send({error: "Invalid description!"});
-            }
+        return res.code(200).send({updated: true});
+    });
 
-            const user: any = await accountCheck(await verifyToken(req) || "");
-            if (user === null) return res.code(400).send({error: "User not found!"});
+    fastify.post("/description", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        if (!verifyDescription(req.body.description)) return res.code(400).send({error: "Invalid description!"});
 
-            await db.collection("users").doc(user.id).update({
-                description: req.body.description,
-            });
+        const user: any = await accountCheck(await verifyToken(req) || "");
+        if (user === null) return res.code(400).send({error: "User not found!"});
 
-            return res.code(200).send({updated: true});
-        }
-    );
+        await db.collection("users").doc(user.id).update({description: req.body.description});
+
+        return res.code(200).send({updated: true});
+    });
 }

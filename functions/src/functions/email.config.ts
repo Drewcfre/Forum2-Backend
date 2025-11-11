@@ -1,4 +1,4 @@
-// TODO: Make sure to switch to a real email account so that emails are actually sent.
+// TODO: Make sure to switch to a real email account later so that emails are actually sent.
 
 import nodemailer, {createTestAccount, createTransport} from "nodemailer";
 

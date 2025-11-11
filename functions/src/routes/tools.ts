@@ -2,7 +2,7 @@ import {FastifyReply} from "fastify";
 import svgCaptcha from "svg-captcha";
 
 /**
- * Routes which facilitate the use of tools.
+ * Routes which facilitate the use of tools rather than functions associated with the forum.
  * @param {any} fastify The fastify instance.
  * @param {any} opts Options for the route.
  */

@@ -64,7 +64,37 @@ export async function userRoutes(fastify: any, opts: any): Promise<void> {
     });
 
     fastify.post("/rate/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        // const docs: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
+        const username: string = await verifyToken(req) || "";
+        if (username) return res.code(403).send({error: "Not logged in!"});
+
+        await db.collection("users").where("username", "==", username)
+            .limit(1).get().then(async (snapshot: any): Promise<any> => {
+                if (snapshot.empty) return res.code(400).send({error: "User not found!"});
+
+                const threadData = snapshot.docs[0].data();
+                if (threadData.threadsRated.findKey(req.params.thread) != undefined) {
+                    return res.code(401).send({error: "Already rated thread!"});
+                }
+            });
+
+        await db.collection(req.params.board).where("UUID", "==", req.params.thread).get()
+            .then(async (snapshot: any): Promise<FastifyReply> => {
+                if (snapshot.empty) return res.code(400).send({error: "Thread not found!"});
+
+                const threadRef = snapshot.docs[0].ref;
+                const threadData = snapshot.docs[0].data();
+
+                const rateCount = (threadData.rateCount + 1);
+                const rating = (threadData.rating + req.body.rating) / rateCount;
+
+                threadRef.update({
+                    rating: rating,
+                    rateCount: rateCount,
+                });
+
+                return res.code(200).send({rated: true});
+            });
+
         return res.code(500).send({error: "Not implemented!"});
     });
 }

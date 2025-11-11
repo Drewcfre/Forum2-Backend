@@ -22,6 +22,9 @@
       ]
     }
   ],
+  "realtime": {
+    "rules": "realtime.rules"
+  },
   "storage": {
     "rules": "storage.rules"
   },
@@ -38,6 +41,12 @@
     "ui": {
       "enabled": true
     },
-    "singleProjectMode": true
+    "singleProjectMode": true,
+    "database": {
+      "port": 9000
+    },
+    "pubsub": {
+      "port": 8085
+    }
   }
 }
