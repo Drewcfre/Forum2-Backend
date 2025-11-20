@@ -24,8 +24,14 @@ import {userRoutes} from "./routes/user.routes";
 fastify.register(userRoutes, {prefix: "/user"});
 // endregion
 
+import fastifyRoutes from "@fastify/routes";
+fastify.register(fastifyRoutes);
+
+console.log("Fastify Routes Registered!");
+console.log(fastify.routes);
+
 // Reroutes all user requests to this cloud function through the Fastify instance.
-exports.app = onRequest(async (req: any, res: any): Promise<void> => {
+exports.app = onRequest({cors: false}, async (req: any, res: any): Promise<void> => {
     fastify.server.emit("request", req, res);
 });
 

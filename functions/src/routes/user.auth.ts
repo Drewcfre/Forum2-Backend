@@ -71,7 +71,7 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
             const userDoc = userCheck.docs[0];
             const userRef = db.collection("users").doc(userDoc.id);
 
-            req.session.jwt = generateToken(userDoc.data().username);
+            req.cookeis.JWT = req.signCookie(await generateToken(userDoc.data().username));
 
             await userRef.update({
                 password: userDoc.data().newPassword,
@@ -97,7 +97,8 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         if (!user.data().verified) return res.code(400).send({error: "Account not verified!"});
 
         if (bcrypt.compareSync(password, user.data().password)) {
-            req.session.jwt = await generateToken(username);
+            req.cookeis.JWT = req.signCookie(await generateToken(username));
+
             return res.code(200).send({loggedIn: true});
         } else return res.code(400).send({error: "Incorrect password!"});
     });
@@ -110,7 +111,7 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
 
     fastify.get("/logout",
         async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-            req.session.destroy();
+            req.cookies.JWT = req.signCookie("");
             return res.code(200).send({loggedIn: false});
         }
     );

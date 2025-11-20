@@ -22,9 +22,6 @@
       ]
     }
   ],
-  "realtime": {
-    "rules": "realtime.rules"
-  },
   "storage": {
     "rules": "storage.rules"
   },

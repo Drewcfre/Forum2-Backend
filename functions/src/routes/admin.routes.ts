@@ -75,26 +75,4 @@ export async function adminRoutes(fastify: any): Promise<void> {
 
         return res.code(500).send({error: "An unknown error occurred!"});
     });
-
-    // TODO: Uncomment and test once IP tracking is implemented (if ever).
-    // fastify.post("/blacklist/:ip", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-    //     if (!await adminCheck(await verifyToken(req) || "")) return res.code(403).send({error: "Invalid Credentials!"});
-    //
-    //     await db.collection("blacklist")
-    //         .where("ip", "==", req.params.ip)
-    //         .get()
-    //         .then((snapshot: any): FastifyReply => {
-    //             if (!snapshot.empty) return res.code(400).send({error: "IP already blacklisted!"});
-    //
-    //             db.collection("blacklist").add({
-    //                 ip: req.params.ip,
-    //                 dateAdded: new Date(),
-    //                 reason: req.body.reason || "No reason provided.",
-    //             });
-    //
-    //             return res.code(201).send({message: "IP blacklisted!"});
-    //         });
-    //
-    //     return res.code(500).send({error: "An unknown error occurred!"});
-    // });
 }

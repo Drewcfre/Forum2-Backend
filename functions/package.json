@@ -21,9 +21,6 @@
     "@fastify/multipart": "^9.2.1",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/routes": "^6.0.2",
-    "@fastify/routes-stats": "^4.0.2",
-    "@fastify/session": "^11.1.0",
-    "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.1",
@@ -37,6 +34,7 @@
     "svg-captcha": "^1.4.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/multer": "^2.0.0",
     "@types/nodemailer": "^7.0.2",
     "@typescript-eslint/eslint-plugin": "^5.12.0",

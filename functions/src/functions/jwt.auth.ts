@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
  * @return {Promise<string>} The generated JWT token.
  */
 export async function generateToken(username: string): Promise<string> {
-    const secret = process.env.JWT_SECRET_KEY;
+    const secret = `${process.env.JWT_SECRET_KEY}`;
     if (!secret || secret.trim() === "") {
         console.log("JWT secret key is not set in environment variables!");
         return "";
@@ -24,20 +24,20 @@ export async function generateToken(username: string): Promise<string> {
  * otherwise undefined.
  */
 export async function verifyToken(req: any): Promise<string | undefined> {
-    const secret = process.env.JWT_SECRET_KEY;
+    const secret = `${process.env.JWT_SECRET_KEY}`;
     if (!secret || secret.trim() === "") {
         console.log("JWT secret key is not set in environment variables!");
         return "";
     }
 
-    const header = process.env.TOKEN_HEADER_KEY;
+    const header = `${process.env.TOKEN_HEADER_KEY}`;
     if (!header || header.trim() === "") {
         console.log("Token header key is not set in environment variables!");
         return "";
     }
 
     try {
-        const token = req.session.jwt;
+        const token = req.unsign(req.cookies.JWT);
 
         if (!token || token.trim() === "") {
             console.log("Token was not found!");
@@ -61,5 +61,5 @@ export async function verifyToken(req: any): Promise<string | undefined> {
  */
 export async function verifyDeveloper(req: any): Promise<boolean | undefined> {
     // TODO: Come up with a more secure and sustainable developer verify method.
-    return await verifyToken(req) === process.env.DEV_USERNAME;
+    return await verifyToken(req) === `${process.env.DEV_USERNAME}`;
 }

@@ -95,6 +95,6 @@ export async function userRoutes(fastify: any, opts: any): Promise<void> {
                 return res.code(200).send({rated: true});
             });
 
-        return res.code(500).send({error: "Not implemented!"});
+        return res.code(200).send({rated: false});
     });
 }

@@ -5,12 +5,30 @@ import {submitImageToBucket} from "../functions/image.handler";
 import {verifyToken} from "../functions/jwt.auth";
 import {verifyPostTitle, verifyReplyContent} from "../functions/regex.checkers";
 import {db, realtime} from "../lib/instance";
+
 /**
- * Routes that require no authorization. Anonymous access requires the user to solve a Captcha, however.
+ * Routes that require no authorization.
+ * Anonymous access requires the user to solve a Captcha for some routes.
  * @param {any} fastify The fastify instance.
  * @param {any} opts Options for the route.
  */
 export async function anonRoutes(fastify: any, opts: any): Promise<void> {
+    fastify.get("/profile/:username", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        const docs: any = await db.collection("users").where("username", "==", req.params.username).get();
+        if (docs.empty) return res.code(404).send({error: "User not found!"});
+
+        const userData: any = docs.docs[0].data();
+        return res.code(200).send({
+            username: userData.username,
+            profilePic: userData.profilePic || "",
+            title: userData.title || "",
+            description: userData.description || "",
+            creationDate: userData.creationDate,
+            threadsCreated: userData.threadsCreated || 0,
+            postsCreated: userData.postsCreated || 0,
+        });
+    });
+
     fastify.get("/catalog/:board", async (req: any, res: FastifyReply): Promise<any> => {
         try {
             const ref = realtime.ref(`board/${req.params.board}`);
@@ -24,11 +42,12 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
         try {
             const username: string = await verifyToken(req) || "Anonymous";
 
-            // if (username == "Anonymous") {
-            //     if (req.session.captcha != req.body.captcha) {
-            //         return res.code(401).send({error: "Incorrect CAPTCHA!"});
-            //     }
-            // }
+            if (username == "Anonymous") {
+                if (req.unsignCookie(req.cookies.captcha) != req.body.captcha) {
+                    return res.code(401).send({error: "Incorrect CAPTCHA!"});
+                }
+            }
+            req.cookies.captcha = "";
 
             if (!verifyPostTitle(req.body.title)) return res.code(400).send({error: "Invalid title!"});
 
@@ -69,11 +88,12 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
     fastify.post("/reply/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         const username: string = await verifyToken(req) || "Anonymous";
 
-        // if (username == "Anonymous") {
-        //     if (req.session.captcha != req.body.captcha) {
-        //         return res.code(401).send({error: "Incorrect CAPTCHA!"});
-        //     }
-        // }
+        if (username == "Anonymous") {
+            if (req.unsignCookie(req.cookies.captcha) != req.body.captcha) {
+                return res.code(401).send({error: "Incorrect CAPTCHA!"});
+            }
+        }
+        req.cookies.captcha = "";
 
         if (!verifyReplyContent(req.body.content)) return res.code(400).send({error: "Invalid content!"});
 
@@ -114,5 +134,25 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
         const ref = realtime.ref(`board/${req.params.board}/${req.params.thread}`);
         await ref.set((await ref.get() + req.body.content));
         return res.code(200).send({body: ref.get()});
+    });
+
+    fastify.post("update/:notice", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        req.cookies.cookieNotice = req.params.notice;
+
+        return res.code(200).send({
+            cookieNotice: req.cookies.cookieNotice,
+        });
+    });
+
+    fastify.post("update/:theme/:font/:style", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        req.cookies.theme = req.params.theme;
+        req.cookies.font = req.params.font;
+        req.cookies.style = req.params.style;
+
+        return res.code(200).send({
+            theme: req.cookies.theme,
+            font: req.cookies.font,
+            style: req.cookies.style,
+        });
     });
 }

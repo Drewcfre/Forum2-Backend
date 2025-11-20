@@ -11,12 +11,13 @@ export async function toolRoutes(fastify: any, opts: any): Promise<void> {
         const captcha = svgCaptcha.create({
             size: 8,
             ignoreChars: "0o1i",
-            noise: 4,
+            noise: 3,
             color: false,
             background: "#000",
         });
 
-        req.session.captcha = captcha.text;
+        req.cookies.captcha = req.signCookie(captcha.text);
+
         return res.code(200).type("svg").send(captcha.data);
     });
 }
