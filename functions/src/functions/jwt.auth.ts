@@ -37,7 +37,7 @@ export async function verifyToken(req: any): Promise<string | undefined> {
     }
 
     try {
-        const token = req.unsign(req.cookies.JWT);
+        const token = req.unsign(req.cookies.JWT).value;
 
         if (!token || token.trim() === "") {
             console.log("Token was not found!");

@@ -28,7 +28,6 @@ import fastifyRoutes from "@fastify/routes";
 fastify.register(fastifyRoutes);
 
 console.log("Fastify Routes Registered!");
-console.log(fastify.routes);
 
 // Reroutes all user requests to this cloud function through the Fastify instance.
 exports.app = onRequest({cors: false}, async (req: any, res: any): Promise<void> => {

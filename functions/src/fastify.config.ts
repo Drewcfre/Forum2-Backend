@@ -79,7 +79,8 @@ fastify.addHook("preHandler", async (req, _res): Promise<void> => {
 fastify.addHook("onSend", async (req: any, res: FastifyReply, payload: unknown): Promise<unknown> => {
     res.removeHeader("Set-Cookie");
 
-    res.setCookie("captcha", req.unsignCookie(req.cookies.captcha) || "", {
+    let value: string = (req.cookies != null && req.cookies.captcha != null) ? req.unsignCookie(req.cookies.captcha).value : "";
+    res.setCookie("captcha", value, {
         signed: true,
         secure: true,
         httpOnly: false,
@@ -87,7 +88,8 @@ fastify.addHook("onSend", async (req: any, res: FastifyReply, payload: unknown):
         sameSite: "none",
     });
 
-    res.setCookie("JWT", req.unsign(req.cookies.JWT) || "", {
+    value = (req.cookies != null && req.cookies.JWT != null) ? req.unsignCookie(req.cookies.JWT).value : "";
+    res.setCookie("JWT", value, {
         signed: true,
         secure: true,
         httpOnly: false,
@@ -97,7 +99,9 @@ fastify.addHook("onSend", async (req: any, res: FastifyReply, payload: unknown):
 
     // If third-party cookies are blocked, the website will not function properly.
     // A notice is shown to the user if this cookie is not present.
-    res.setCookie("cookieNotice", req.unsignCookie(req.cookies.cookieNotice) || "false", {
+    value = (req.cookies != null && req.cookies.cookieNotice != null) ?
+        req.unsignCookie(req.cookies.cookieNotice).value : "false";
+    res.setCookie("cookieNotice", value, {
         signed: true,
         secure: true,
         httpOnly: false,
@@ -105,7 +109,9 @@ fastify.addHook("onSend", async (req: any, res: FastifyReply, payload: unknown):
         sameSite: "none",
     });
 
-    res.setCookie("theme", req.unsignCookie(req.cookies.theme) || "classic", {
+    value = (req.cookies != null && req.cookies.theme != null) ? req.unsignCookie(req.cookies.theme).value : "classic";
+    console.log("theme: " + value);
+    res.setCookie("theme", value, {
         signed: true,
         secure: true,
         httpOnly: false,
@@ -113,7 +119,8 @@ fastify.addHook("onSend", async (req: any, res: FastifyReply, payload: unknown):
         sameSite: "none",
     });
 
-    res.setCookie("font", req.unsignCookie(req.cookies.font) || "Monospace", {
+    value = (req.cookies != null && req.cookies.font != null) ? req.unsignCookie(req.cookies.font).value : "Monospace";
+    res.setCookie("font", value, {
         signed: true,
         secure: true,
         httpOnly: false,
@@ -121,7 +128,8 @@ fastify.addHook("onSend", async (req: any, res: FastifyReply, payload: unknown):
         sameSite: "none",
     });
 
-    res.setCookie("style", req.unsignCookie(req.cookies.style) || "classic", {
+    value = (req.cookies != null && req.cookies.style != null) ? req.unsignCookie(req.cookies.style).value : "classic";
+    res.setCookie("style", value, {
         signed: true,
         secure: true,
         httpOnly: false,

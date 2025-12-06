@@ -9,6 +9,15 @@ import {verifyToken} from "../functions/jwt.auth";
  * @param {any} opts Options for the route.
  */
 export async function userRoutes(fastify: any, opts: any): Promise<void> {
+    fastify.get("/profile", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        const username: string = await verifyToken(req) || "";
+        const docs: any = await db.collection("users").where("username", "==", username).get();
+        if (docs.empty) return res.code(404).send({error: "User not found!"});
+
+        const userData: any = docs.docs[0].data();
+        return res.code(200).send({userData: userData});
+    });
+
     fastify.put("/edit/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
         const docs: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
         if (docs[0].username != await verifyToken(req) || "") return res.code(403).send({error: "Invalid credentials!"});

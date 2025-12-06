@@ -16,8 +16,18 @@ export async function toolRoutes(fastify: any, opts: any): Promise<void> {
             background: "#000",
         });
 
-        req.cookies.captcha = req.signCookie(captcha.text);
+        const text: string = captcha.text;
+        console.log(text);
+        req.cookies.captcha = req.signCookie(text);
 
         return res.code(200).type("svg").send(captcha.data);
+    });
+
+    fastify.get("/customization", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        return res.code(200).send({
+            "theme": req.unsignCookie(req.cookies.theme).value,
+            "font": req.unsignCookie(req.cookies.font).value,
+            "style": req.unsignCookie(req.cookies.style).value,
+        });
     });
 }
