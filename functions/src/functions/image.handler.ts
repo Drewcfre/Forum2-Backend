@@ -2,12 +2,6 @@ import sharp from "sharp";
 
 import {bucket} from "../lib/instance";
 
-/**
- * Saves image data to storage and returns the associated URL.
- * @param {any} imageData The image to save.
- * @param {string} board The board the image was sent to.
- * @return {Promise<string>} The created URL.
- */
 export async function submitImageToBucket(imageData: any, board: string): Promise<string> {
     const {filename, mimetype, data} = await imageData;
     const imgBuffer = Buffer.from(data, "base64");
@@ -24,10 +18,6 @@ export async function submitImageToBucket(imageData: any, board: string): Promis
         .then((urls: string[]): string => urls[0]);
 }
 
-/**
- * Deletes a file.
- * @param {string} url The URL to delete the file from.
- */
 export async function removeImageFromBucket(url: string): Promise<void> {
     await bucket.file(url).delete();
 }

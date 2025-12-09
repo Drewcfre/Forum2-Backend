@@ -2,6 +2,7 @@ import {FastifyReply} from "fastify";
 
 import {db} from "../lib/instance";
 import {verifyToken} from "../functions/jwt.auth";
+//import {readCookie} from "../functions/cookie.manager";
 
 /**
  * Routes that require basic user authorization.
@@ -16,6 +17,11 @@ export async function userRoutes(fastify: any, opts: any): Promise<void> {
 
         const userData: any = docs.docs[0].data();
         return res.code(200).send({userData: userData});
+    });
+
+    fastify.get("/test", async (req: any, res: FastifyReply) => {
+        const username: string = await verifyToken(req) || "";
+        return res.code(200).send({"cookie": username});
     });
 
     fastify.put("/edit/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {

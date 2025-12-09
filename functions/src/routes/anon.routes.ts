@@ -5,15 +5,10 @@ import {submitImageToBucket} from "../functions/image.handler";
 import {verifyToken} from "../functions/jwt.auth";
 import {verifyPostTitle, verifyReplyContent} from "../functions/regex.checkers";
 import {db, realtime} from "../lib/instance";
+import {createCookie, readCookie, updateCookie} from "../functions/cookie.manager";
 
-/**
- * Routes that require no authorization.
- * Anonymous access requires the user to solve a Captcha for some routes.
- * @param {any} fastify The fastify instance.
- * @param {any} opts Options for the route.
- */
-export async function anonRoutes(fastify: any, opts: any): Promise<void> {
-    fastify.get("/profile/:username", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+export async function anonRoutes(fastify: any, _opts: any): Promise<void> {
+    fastify.get("/profile/:username", async (req: any, res: FastifyReply): Promise<never> => {
         const docs: any = await db.collection("users").where("username", "==", req.params.username).get();
         if (docs.empty) return res.code(404).send({error: "User not found!"});
 
@@ -29,7 +24,7 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
         });
     });
 
-    fastify.get("/catalog/:board", async (req: any, res: FastifyReply): Promise<any> => {
+    fastify.get("/catalog/:board", async (req: any, res: FastifyReply): Promise<never> => {
         try {
             const ref = realtime.ref(`board/${req.params.board}`);
             return res.code(200).send({body: await ref.get()});
@@ -38,12 +33,12 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
         }
     });
 
-    fastify.post("/create/:board", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/create/:board", async (req: any, res: FastifyReply): Promise<never> => {
         try {
             const username: string = await verifyToken(req) || "Anonymous";
 
             if (username == "Anonymous") {
-                if (req.unsignCookie(req.cookies.captcha) != req.body.captcha) {
+                if (readCookie("captcha", req) !== req.body.captcha) {
                     return res.code(401).send({error: "Incorrect CAPTCHA!"});
                 }
             }
@@ -85,11 +80,11 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
         }
     });
 
-    fastify.post("/reply/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/reply/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const username: string = await verifyToken(req) || "Anonymous";
 
         if (username == "Anonymous") {
-            if (req.unsignCookie(req.cookies.captcha) != req.body.captcha) {
+            if (readCookie("captcha", req) !== req.body.captcha) {
                 return res.code(401).send({error: "Incorrect CAPTCHA!"});
             }
         }
@@ -125,34 +120,14 @@ export async function anonRoutes(fastify: any, opts: any): Promise<void> {
             });
     });
 
-    fastify.get("/live/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.get("/live/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const ref = realtime.ref(`board/${req.params.board}/${req.params.thread}`);
         return res.code(200).send({body: ref.get()});
     });
 
-    fastify.post("/reply/live/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/reply/live/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const ref = realtime.ref(`board/${req.params.board}/${req.params.thread}`);
         await ref.set((await ref.get() + req.body.content));
         return res.code(200).send({body: ref.get()});
-    });
-
-    fastify.post("update/:notice", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        req.cookies.cookieNotice = req.params.notice;
-
-        return res.code(200).send({
-            cookieNotice: req.cookies.cookieNotice,
-        });
-    });
-
-    fastify.post("update/:theme/:font/:style", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        req.cookies.theme = req.params.theme;
-        req.cookies.font = req.params.font;
-        req.cookies.style = req.params.style;
-
-        return res.code(200).send({
-            theme: req.cookies.theme,
-            font: req.cookies.font,
-            style: req.cookies.style,
-        });
     });
 }

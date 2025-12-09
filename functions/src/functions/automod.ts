@@ -6,11 +6,6 @@ const bannedWords: string[] = [
 const threatVerbs: string[] = ["hurt", "kill", "molest", "rape", "shoot", "stab", "torture"];
 const threatRefer: string[] = ["their", "them", "they", "you", "your", "him", "her"];
 
-/**
- * Parses a submitted message, checking for slurs.
- * @param {string} message The message to be parsed.
- * @return {string} The censored message.
- */
 export function checkLanguage(message: string): string {
     let parsableMessage = message.toLowerCase()
         .replace(/[\u2018\u2019]/g, "'")
@@ -33,12 +28,6 @@ export function checkLanguage(message: string): string {
     return message;
 }
 
-/**
- * Parses a submitted message, checking for basic potential threats.
- * Due to the uncertainty regarding the check, it is simply flagged instead of removed.
- * @param {string} message The message to be checked.
- * @return {boolean} True if threat is detected, false otherwise.
- */
 export function checkThreats(message: string): boolean {
     let check = false;
 

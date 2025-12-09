@@ -1,13 +1,8 @@
 // TODO: Make sure to switch to a real email account later so that emails are actually sent.
-
 import nodemailer, {createTestAccount, createTransport} from "nodemailer";
 
-let testAccount: any;
-let transporter: any;
+let testAccount: any, transporter: any;
 
-/**
- * Sets up Ethereal email for sending test emails.
- */
 async function setupEtherealEmail(): Promise<void> {
     testAccount = await createTestAccount();
 
@@ -24,12 +19,6 @@ async function setupEtherealEmail(): Promise<void> {
 
 setupEtherealEmail().catch(console.error);
 
-/**
- * Sends an email using the Ethereal email service.
- * @param {string} to Recipient email address.
- * @param {string} subject Email subject.
- * @param {string} body Email body.
- */
 export async function sendEmail(
     to: string, subject: string, body: string): Promise<void> {
     const mailOptions = {

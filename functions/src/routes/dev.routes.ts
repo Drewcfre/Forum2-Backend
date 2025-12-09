@@ -1,40 +1,30 @@
 import {FastifyReply} from "fastify";
 
-import {verifyDeveloper} from "../functions/jwt.auth";
+import {verifyToken} from "../functions/jwt.auth";
 import {db, instanceStartTime} from "../lib/instance";
 
-/**
- * Contains testing routes for development purposes.
- * @param {any} fastify The fastify instance.
- * @param {any} opts Options for the route.
- */
 export async function devRoutes(fastify: any, opts: any): Promise<void> {
-    fastify.get("/test", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        if (await verifyDeveloper(req)) {
-            const currentTime: Date = new Date();
-            const timeActiveInMilliseconds =
-            Math.abs(currentTime.getTime() - instanceStartTime.getTime());
+    fastify.addHook("preHandler", async (req: any, res: FastifyReply): Promise<void> => {
+        // TODO: Come up with a more sustainable developer verify method.
+        if (await verifyToken(req) !== `${process.env.DEV_USERNAME}`) res.code(403).send({error: "Invalid Credentials!"});
+    });
 
-            return res.code(200).send({
-                name: "Beatrice -- Forum2 Backend",
-                instanceStartTime: instanceStartTime,
-                timeActiveInMilliseconds: timeActiveInMilliseconds,
-            });
-        } else return res.code(403).send({error: "Invalid Credentials!"});
+    fastify.get("/test", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+        return res.code(200).send({
+            name: "Beatrice -- Forum2 Backend",
+            instanceStartTime: instanceStartTime,
+            timeActiveInMilliseconds: Math.abs(new Date().getTime() - instanceStartTime.getTime()),
+        });
     });
 
     fastify.get("/routes", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        if (await verifyDeveloper(req)) return res.code(200).send({routes: await fastify.routes});
-        else return res.code(403).send({error: "Invalid Credentials!"});
+        return res.code(200).send({routes: await fastify.routes});
     });
 
-    // Only the dev should be allowed to create admin accounts via this route.
     fastify.post("/create/admin/:username", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        if (!await verifyDeveloper(req)) return res.code(403).send({error: "Invalid Credentials!"});
-
         const users: any = await db.collection("users").where("username", "==", req.params.username).get();
         users[0].update({admin: true});
 
-        return res.code(200).send({adminCreated: true});
+        return res.code(200);
     });
 }

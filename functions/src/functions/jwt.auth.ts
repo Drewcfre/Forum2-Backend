@@ -1,11 +1,7 @@
 import "dotenv/config";
 import jwt from "jsonwebtoken";
+import {readCookie} from "./cookie.manager";
 
-/**
- * Generates a JWT token for the given username.
- * @param {string} username The username to include in the token.
- * @return {Promise<string>} The generated JWT token.
- */
 export async function generateToken(username: string): Promise<string> {
     const secret = `${process.env.JWT_SECRET_KEY}`;
     if (!secret || secret.trim() === "") {
@@ -17,12 +13,6 @@ export async function generateToken(username: string): Promise<string> {
     return jwt.sign(data, secret);
 }
 
-/**
- * Verifies the JWT token from the request session.
- * @param {any} req The request object containing the session.
- * @return {Promise<string | undefined>} The username if the token is valid,
- * otherwise undefined.
- */
 export async function verifyToken(req: any): Promise<string | undefined> {
     const secret = `${process.env.JWT_SECRET_KEY}`;
     if (!secret || secret.trim() === "") {
@@ -37,7 +27,7 @@ export async function verifyToken(req: any): Promise<string | undefined> {
     }
 
     try {
-        const token = req.unsign(req.cookies.JWT).value;
+        const token = readCookie("JWT", req);
 
         if (!token || token.trim() === "") {
             console.log("Token was not found!");
@@ -51,15 +41,4 @@ export async function verifyToken(req: any): Promise<string | undefined> {
         console.error("Error verifying token: ", error);
         return "";
     }
-}
-
-/**
- * Checks if the request is made by a developer.
- * @param {any} req The request object containing the session.
- * @return {Promise<boolean | undefined>} True if the user is a developer,
- * false otherwise.
- */
-export async function verifyDeveloper(req: any): Promise<boolean | undefined> {
-    // TODO: Come up with a more secure and sustainable developer verify method.
-    return await verifyToken(req) === `${process.env.DEV_USERNAME}`;
 }

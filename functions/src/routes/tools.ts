@@ -1,13 +1,10 @@
 import {FastifyReply} from "fastify";
 import svgCaptcha from "svg-captcha";
 
-/**
- * Routes which facilitate the use of tools rather than functions associated with the forum.
- * @param {any} fastify The fastify instance.
- * @param {any} opts Options for the route.
- */
-export async function toolRoutes(fastify: any, opts: any): Promise<void> {
-    fastify.get("/captcha", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+import {readCookie, updateCookie} from "../functions/cookie.manager";
+
+export async function toolRoutes(fastify: any, _opts: any): Promise<void> {
+    fastify.get("/captcha", async (_req: any, res: FastifyReply): Promise<never> => {
         const captcha = svgCaptcha.create({
             size: 8,
             ignoreChars: "0o1i",
@@ -16,18 +13,33 @@ export async function toolRoutes(fastify: any, opts: any): Promise<void> {
             background: "#000",
         });
 
-        const text: string = captcha.text;
-        console.log(text);
-        req.cookies.captcha = req.signCookie(text);
-
+        updateCookie("captcha", captcha.text, 1000 * 60, res);
         return res.code(200).type("svg").send(captcha.data);
     });
 
-    fastify.get("/customization", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.get("/customization", async (req: any, res: FastifyReply): Promise<never> => {
         return res.code(200).send({
-            "theme": req.unsignCookie(req.cookies.theme).value,
-            "font": req.unsignCookie(req.cookies.font).value,
-            "style": req.unsignCookie(req.cookies.style).value,
+            "theme": readCookie("theme", req),
+            "font":  readCookie("font",  req),
+            "style": readCookie("style", req),
         });
+    });
+
+    fastify.post("/customization/:theme/:font/:style", async (req: any, res: FastifyReply): Promise<never> => {
+        updateCookie("theme", req.params.theme, 1000 * 60 * 60 * 24 * 365, res);
+        updateCookie("font",  req.params.font,  1000 * 60 * 60 * 24 * 365, res);
+        updateCookie("style", req.params.style, 1000 * 60 * 60 * 24 * 365, res);
+
+        return res.code(200);
+    });
+
+    fastify.get("/notice", async (req: any, res: FastifyReply): Promise<never> => {
+       return res.code(200).send({ "cookieNotice": readCookie("cookieNotice", req) });
+    });
+
+    fastify.post("/notice", async (_req: any, res: FastifyReply): Promise<never> => {
+        updateCookie("cookieNotice", "true", 1000 * 60 * 60 * 24 * 365, res);
+
+        return res.code(200);
     });
 }

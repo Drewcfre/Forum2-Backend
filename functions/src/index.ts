@@ -22,6 +22,9 @@ fastify.register(userAuthRoutes, {prefix: "/user"});
 
 import {userRoutes} from "./routes/user.routes";
 fastify.register(userRoutes, {prefix: "/user"});
+
+import {honeypotRoutes} from "./wonderland/honeypot";
+fastify.register(honeypotRoutes, {prefix: "/story"});
 // endregion
 
 import fastifyRoutes from "@fastify/routes";
