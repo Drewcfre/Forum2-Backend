@@ -5,7 +5,7 @@ import {submitImageToBucket} from "../functions/image.handler";
 import {verifyToken} from "../functions/jwt.auth";
 import {verifyPostTitle, verifyReplyContent} from "../functions/regex.checkers";
 import {db, realtime} from "../lib/instance";
-import {createCookie, readCookie, updateCookie} from "../functions/cookie.manager";
+import {readCookie} from "../functions/cookie.manager";
 
 export async function anonRoutes(fastify: any, _opts: any): Promise<void> {
     fastify.get("/profile/:username", async (req: any, res: FastifyReply): Promise<never> => {

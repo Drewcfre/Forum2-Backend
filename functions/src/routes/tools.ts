@@ -25,12 +25,19 @@ export async function toolRoutes(fastify: any, _opts: any): Promise<void> {
         });
     });
 
-    fastify.post("/customization/:theme/:font/:style", async (req: any, res: FastifyReply): Promise<never> => {
+    fastify.post("/theme/:theme", async (req: any, res: FastifyReply): Promise<never> => {
         updateCookie("theme", req.params.theme, 1000 * 60 * 60 * 24 * 365, res);
-        updateCookie("font",  req.params.font,  1000 * 60 * 60 * 24 * 365, res);
-        updateCookie("style", req.params.style, 1000 * 60 * 60 * 24 * 365, res);
+        return res.code(200).send({"theme": req.params.theme});
+    });
 
-        return res.code(200);
+    fastify.post("/font/:font", async (req: any, res: FastifyReply): Promise<never> => {
+        updateCookie("font", req.params.font, 1000 * 60 * 60 * 24 * 365, res);
+        return res.code(200).send({"font": req.params.font});
+    });
+
+    fastify.post("/style/:style", async (req: any, res: FastifyReply): Promise<never> => {
+        updateCookie("style", req.params.style, 1000 * 60 * 60 * 24 * 365, res);
+        return res.code(200).send({"style": req.params.style});
     });
 
     fastify.get("/notice", async (req: any, res: FastifyReply): Promise<never> => {
@@ -40,6 +47,6 @@ export async function toolRoutes(fastify: any, _opts: any): Promise<void> {
     fastify.post("/notice", async (_req: any, res: FastifyReply): Promise<never> => {
         updateCookie("cookieNotice", "true", 1000 * 60 * 60 * 24 * 365, res);
 
-        return res.code(200);
+        return res.code(200).send({"cookieNotice": true});
     });
 }

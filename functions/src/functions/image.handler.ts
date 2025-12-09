@@ -10,10 +10,10 @@ export async function submitImageToBucket(imageData: any, board: string): Promis
         .webp({quality: 80, effort: 3})
         .toBuffer();
 
-    await bucket.file(`/uploads/${board}/${filename}`).save(outputBuffer, {metadata: {contentType: mimetype}});
+    await bucket.file(`uploads/${board}/${filename}`).save(outputBuffer, {metadata: {contentType: mimetype}});
 
     // Not a permanent URL, but I don't expect anyone in 2500 to be complaining about it.
-    return await bucket.file(`/uploads/${filename}`)
+    return await bucket.file(`uploads/${board}/${filename}`)
         .getSignedUrl({action: "read", expires: "03-01-2500"})
         .then((urls: string[]): string => urls[0]);
 }
