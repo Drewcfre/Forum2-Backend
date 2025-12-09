@@ -5,22 +5,31 @@ import {submitImageToBucket} from "../functions/image.handler";
 import {verifyToken} from "../functions/jwt.auth";
 import {verifyPostTitle, verifyReplyContent} from "../functions/regex.checkers";
 import {db, realtime} from "../lib/instance";
-import {readCookie} from "../functions/cookie.manager";
+import {deleteCookie, readCookie} from "../functions/cookie.manager";
+
+async function getUser(username: string, returnBool: boolean): Promise<any> {
+    const docs: any = await db.collection("users").where("username", "==", username).get();
+
+    if (returnBool) return !docs.empty;
+    else {
+        if(docs.empty) return "";
+        else return docs.docs[0].data();
+    }
+}
 
 export async function anonRoutes(fastify: any, _opts: any): Promise<void> {
     fastify.get("/profile/:username", async (req: any, res: FastifyReply): Promise<never> => {
-        const docs: any = await db.collection("users").where("username", "==", req.params.username).get();
-        if (docs.empty) return res.code(404).send({error: "User not found!"});
+        const userDoc: any = await getUser(req.params.username, false);
+        if (userDoc === "") return res.code(404).send({error: "User not found!"});
 
-        const userData: any = docs.docs[0].data();
         return res.code(200).send({
-            username: userData.username,
-            profilePic: userData.profilePic || "",
-            title: userData.title || "",
-            description: userData.description || "",
-            creationDate: userData.creationDate,
-            threadsCreated: userData.threadsCreated || 0,
-            postsCreated: userData.postsCreated || 0,
+            username: userDoc.username,
+            profilePic: userDoc.profilePic || "",
+            title: userDoc.title || "",
+            description: userDoc.description || "",
+            creationDate: userDoc.creationDate,
+            threadsCreated: userDoc.threadsCreated || 0,
+            postsCreated: userDoc.postsCreated || 0,
         });
     });
 
@@ -35,14 +44,16 @@ export async function anonRoutes(fastify: any, _opts: any): Promise<void> {
 
     fastify.post("/create/:board", async (req: any, res: FastifyReply): Promise<never> => {
         try {
-            const username: string = await verifyToken(req) || "Anonymous";
+            const provUser: string = await verifyToken(req) || "";
+            const username: string = (await getUser(provUser, true)) ? provUser : "Anonymous";
 
-            if (username == "Anonymous") {
+            if (username === "Anonymous") {
                 if (readCookie("captcha", req) !== req.body.captcha) {
                     return res.code(401).send({error: "Incorrect CAPTCHA!"});
                 }
             }
-            req.cookies.captcha = "";
+
+            deleteCookie("captcha", 1000 * 60, res);
 
             if (!verifyPostTitle(req.body.title)) return res.code(400).send({error: "Invalid title!"});
 
@@ -81,14 +92,16 @@ export async function anonRoutes(fastify: any, _opts: any): Promise<void> {
     });
 
     fastify.post("/reply/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
-        const username: string = await verifyToken(req) || "Anonymous";
+        const provUser: string = await verifyToken(req) || "";
+        const username: string = (await getUser(provUser, true)) ? provUser : "Anonymous";
 
-        if (username == "Anonymous") {
+        if (username === "Anonymous") {
             if (readCookie("captcha", req) !== req.body.captcha) {
                 return res.code(401).send({error: "Incorrect CAPTCHA!"});
             }
         }
-        req.cookies.captcha = "";
+
+        deleteCookie("captcha", 1000 * 60, res);
 
         if (!verifyReplyContent(req.body.content)) return res.code(400).send({error: "Invalid content!"});
 
