@@ -5,6 +5,8 @@ import path from "path";
 const serviceAccountPath = path.resolve(__dirname, "./forum2-1134f-firebase-adminsdk-fbsvc-be6b303c52.json");
 console.log("Loading service account from:", serviceAccountPath);
 
+// TODO: Stop ESLint's temper tantrum at some point.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const serviceAccount = require(serviceAccountPath);
 
 if (admin.apps.length === 0) {

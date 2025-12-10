@@ -2,43 +2,29 @@ import {FastifyReply} from "fastify";
 
 import {db} from "../lib/instance";
 import {verifyToken} from "../functions/jwt.auth";
-//import {readCookie} from "../functions/cookie.manager";
 
-/**
- * Routes that require basic user authorization.
- * @param {any} fastify The fastify instance.
- * @param {any} opts Options for the route.
- */
-export async function userRoutes(fastify: any, opts: any): Promise<void> {
-    fastify.get("/profile", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+export async function userRoutes(fastify: any): Promise<void> {
+    fastify.get("/profile", async (req: any, res: FastifyReply): Promise<never> => {
         const username: string = await verifyToken(req) || "";
         const docs: any = await db.collection("users").where("username", "==", username).get();
-        if (docs.empty) return res.code(404).send({error: "User not found!"});
 
+        if (docs.empty) return res.code(404).send({error: "User not found!"});
         const userData: any = docs.docs[0].data();
+
         return res.code(200).send({userData: userData});
     });
 
-    fastify.get("/test", async (req: any, res: FastifyReply) => {
-        const username: string = await verifyToken(req) || "";
-        return res.code(200).send({"cookie": username});
-    });
-
-    fastify.put("/edit/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.put("/edit/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const docs: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
         if (docs[0].username != await verifyToken(req) || "") return res.code(403).send({error: "Invalid credentials!"});
 
-        await docs[0].update({
-            title: req.body.title,
-            content: req.body.content,
-        });
+        await docs[0].update({title: req.body.title, content: req.body.content});
 
         return res.code(200).send({updateStatus: true});
     });
 
-    fastify.put("/edit/:board/:thread/:reply", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.put("/edit/:board/:thread/:reply", async (req: any, res: FastifyReply): Promise<never> => {
         const username: string = await verifyToken(req) || "";
-
         const docs: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
         if (docs[0].username != username) return res.code(403).send({error: "Invalid credentials!"});
 
@@ -53,7 +39,7 @@ export async function userRoutes(fastify: any, opts: any): Promise<void> {
         return res.code(200).send({updateStatus: true});
     });
 
-    fastify.delete("/delete/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.delete("/delete/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const docs: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
         if (docs[0].username != await verifyToken(req) || "") return res.code(403).send({error: "Invalid credentials!"});
 
@@ -62,9 +48,8 @@ export async function userRoutes(fastify: any, opts: any): Promise<void> {
         return res.code(200).send({deleteStatus: true});
     });
 
-    fastify.delete("/delete/:board/:thread/:reply", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.delete("/delete/:board/:thread/:reply", async (req: any, res: FastifyReply): Promise<never> => {
         const username: string = await verifyToken(req) || "";
-
         const docs: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
         if (docs[0].username != username) return res.code(403).send({error: "Invalid credentials!"});
 
@@ -78,7 +63,7 @@ export async function userRoutes(fastify: any, opts: any): Promise<void> {
         return res.code(200).send({deleteStatus: true});
     });
 
-    fastify.post("/rate/:board/:thread", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/rate/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const username: string = await verifyToken(req) || "";
         if (username) return res.code(403).send({error: "Not logged in!"});
 

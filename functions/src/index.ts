@@ -38,7 +38,8 @@ exports.app = onRequest({cors: false}, async (req: any, res: any): Promise<void>
 });
 
 // To reduce load on the Firestore database, common queries are periodically made and saved to a Realtime database.
-// By allowing admin queries to go to the Firestore database directly, this also acts as a
+// By allowing admin queries to go to the Firestore database directly, this also acts as a buffer to prevent toxic
+// content from being visible to the majority of users before being removed.
 exports.updateRealtime = functions.pubsub.schedule("every 2 minutes").onRun(async (): Promise<void> => {
     console.log("Updating Realtime Database...");
 

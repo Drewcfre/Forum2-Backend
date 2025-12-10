@@ -5,22 +5,17 @@ import {sendEmail} from "../functions/email.config";
 import {generateToken, verifyToken} from "../functions/jwt.auth";
 import {verifyUsername, verifyPassword, verifyEmail, verifyTitle, verifyDescription} from "../functions/regex.checkers";
 import {db} from "../lib/instance";
-import {removeImageFromBucket, submitImageToBucket} from "../functions/image.handler";
+import {submitImageToBucket} from "../functions/image.handler";
 import {deleteCookie, readCookie, updateCookie} from "../functions/cookie.manager";
 
 async function accountCheck(username: string): Promise<any> {
-    const snapshot = await db.collection("users").where("username", "==", username).limit(1).get();
+    const snapshot = await db.collection("users").where("username", "==", username).get();
     if (snapshot.empty) return null;
     return snapshot.docs[0];
 }
 
 export async function userAuthRoutes(fastify: any): Promise<void> {
-    // fastify.addHook("preHandler", async (req: any, res: FastifyReply): Promise<void> => {
-    //     const snapshot = await db.collection("users").where("username", "==", await verifyToken(req)).get();
-    //     if (snapshot.empty) res.code(403).send({error: "Invalid Credentials!"});
-    // });
-
-    fastify.post("/register", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/register", async (req: any, res: FastifyReply): Promise<never> => {
         let {username, password, email} = req.body;
 
         if (!verifyUsername(username)) return res.code(400).send({error: "Invalid username!"});
@@ -61,14 +56,14 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         }
     });
 
-    fastify.get("/verify/:key", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
-        const userCheck: any = await db.collection("users").where("verifyKey", "==", req.params.key).limit(1).get();
+    fastify.get("/verify/:key", async (req: any, res: FastifyReply): Promise<never> => {
+        const userCheck: any = await db.collection("users").where("verifyKey", "==", req.params.key).get();
 
         if (!userCheck.empty) {
             const userDoc = userCheck.docs[0];
             const userRef = db.collection("users").doc(userDoc.id);
 
-            req.cookies.JWT = req.signCookie(await generateToken(userDoc.data().username));
+            updateCookie("JWT", await generateToken(userDoc.data().username), 1000 * 60 * 60, res);
 
             await userRef.update({
                 password: userDoc.data().newPassword,
@@ -78,9 +73,9 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
             });
 
             return res.code(200).send({verified: true});
-        } else {
-            return res.code(400).send({error: "Invalid verification key!"});
         }
+
+        return res.code(400).send({error: "Invalid verification key!"});
     });
 
     fastify.post("/login", async (req: any, res: FastifyReply): Promise<never> => {
@@ -96,27 +91,31 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         if (bcrypt.compareSync(password, user.data().password)) {
             updateCookie("JWT", await generateToken(username), 1000 * 60 * 60, res);
             return res.code(200).send({"cookie": readCookie("JWT", req)});
-        } else return res.code(400).send({error: "Incorrect password!"});
+        }
+
+        return res.code(400).send({error: "Incorrect password!"});
     });
 
-    fastify.post("/test", async (req: any, res: FastifyReply) => {
-        updateCookie("JWT", await generateToken("test"), 1000 * 60 * 60, res);
-        return res.code(200).send({"cookie": readCookie("JWT", req)});
-    });
-
-    fastify.get("/check", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.get("/check", async (req: any, res: FastifyReply): Promise<never> => {
         const user: any = await accountCheck(await verifyToken(req) || "");
         if (user === null) return res.code(200).send({loggedIn: false});
+
         return res.code(200).send({loggedIn: true});
     });
 
-    fastify.get("/logout", async (_req: any, res: FastifyReply): Promise<FastifyReply> => {
-            deleteCookie("JWT", 1000 * 60 * 60, res);
-            return res.code(200).send({loggedIn: false});
-        }
-    );
+    fastify.get("/compare/:secUser", async (req: any, res: FastifyReply): Promise<never> => {
+        const username: string = await verifyToken(req) || "";
+        if (username === req.params.secUser) return res.code(200).send({same: true});
+        return res.code(200).send({same: false});
+    });
 
-    fastify.post("/username", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.get("/logout", async (_req: any, res: FastifyReply): Promise<never> => {
+        deleteCookie("JWT", 1000 * 60 * 60, res);
+
+        return res.code(200).send({loggedIn: false});
+    });
+
+    fastify.post("/username", async (req: any, res: FastifyReply): Promise<never> => {
         if (!verifyUsername(req.body.username)) return res.code(400).send({error: "Invalid username!"});
 
         const user: any = await accountCheck(await verifyToken(req) || "");
@@ -132,7 +131,7 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         return res.code(200).send({updated: true});
     });
 
-    fastify.post("/password", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/password", async (req: any, res: FastifyReply): Promise<never> => {
         if (!verifyPassword(req.body.password)) return res.code(400).send({error: "Invalid password!"});
 
         const user: any = await accountCheck(await verifyToken(req) || "");
@@ -155,7 +154,7 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         return res.code(200).send({updated: "pending"});
     });
 
-    fastify.post("/email", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/email", async (req: any, res: FastifyReply): Promise<never> => {
         if (!verifyEmail(req.body.email)) return res.code(400).send({error: "Invalid email!"});
 
         const user: any = await accountCheck(await verifyToken(req) || "");
@@ -178,19 +177,20 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         return res.code(200).send({updated: "pending"});
     });
 
-    fastify.post("/profilePic", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/profilePic", async (req: any, res: FastifyReply): Promise<never> => {
         const user: any = await accountCheck(await verifyToken(req) || "");
         if (user === null) return res.code(400).send({error: "User not found!"});
 
-        const url = await submitImageToBucket(await req.body.image, "Profile");
+        let url = "";
+        if (req.body.image) url = await submitImageToBucket(await req.body.image, "Profile");
 
-        if (user.profilePic != "") await removeImageFromBucket(user.profilePic);
+        // TODO: Add code to remove previous profile picture from the database.
         await db.collection("users").doc(user.id).update({profilePic: url});
 
         return res.code(200).send({updated: true});
     });
 
-    fastify.post("/title", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/title", async (req: any, res: FastifyReply): Promise<never> => {
         if (!verifyTitle(req.body.title)) return res.code(400).send({error: "Invalid title!"});
 
         const user: any = await accountCheck(await verifyToken(req) || "");
@@ -201,7 +201,7 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
         return res.code(200).send({updated: true});
     });
 
-    fastify.post("/description", async (req: any, res: FastifyReply): Promise<FastifyReply> => {
+    fastify.post("/description", async (req: any, res: FastifyReply): Promise<never> => {
         if (!verifyDescription(req.body.description)) return res.code(400).send({error: "Invalid description!"});
 
         const user: any = await accountCheck(await verifyToken(req) || "");

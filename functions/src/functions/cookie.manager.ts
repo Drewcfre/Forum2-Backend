@@ -7,7 +7,7 @@ export function createCookie(name: string, value: string, age: number, res: Fast
         secure: true,
         httpOnly: false,
         maxAge: age,
-        sameSite: "none"
+        sameSite: "none",
     });
 }
 
@@ -22,7 +22,7 @@ export function deleteCookie(name: string, age: number, res: FastifyReply): void
         secure: true,
         httpOnly: false,
         maxAge: age,
-        sameSite: "none"
+        sameSite: "none",
     });
 }
 

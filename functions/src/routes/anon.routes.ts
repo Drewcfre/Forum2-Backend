@@ -12,7 +12,7 @@ async function getUser(username: string, returnBool: boolean): Promise<any> {
 
     if (returnBool) return !docs.empty;
     else {
-        if(docs.empty) return "";
+        if (docs.empty) return "";
         else return docs.docs[0].data();
     }
 }

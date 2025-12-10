@@ -11,7 +11,7 @@ export async function adminRoutes(fastify: any): Promise<void> {
             .get().then((snapshot: any): boolean => !snapshot.empty);
 
         if (!isAdmin) res.code(403).send({error: "Invalid Credentials!"});
-    })
+    });
 
     fastify.get("/users/all", async (_req: any, res: FastifyReply): Promise<never> => {
         await db.collection("users").get().then((snapshot: any): FastifyReply => {

@@ -3,7 +3,7 @@ import svgCaptcha from "svg-captcha";
 
 import {readCookie, updateCookie} from "../functions/cookie.manager";
 
-export async function toolRoutes(fastify: any, _opts: any): Promise<void> {
+export async function toolRoutes(fastify: any): Promise<void> {
     fastify.get("/captcha", async (_req: any, res: FastifyReply): Promise<never> => {
         const captcha = svgCaptcha.create({
             size: 8,

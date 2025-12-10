@@ -32,6 +32,6 @@ module.exports = {
         "max-len": ["error", {"code": 130}],
         "@typescript-eslint/no-explicit-any": 0,
         "@typescript-eslint/no-unused-vars": 0,
-        "require-jsdoc": false,
+        "require-jsdoc": 0,
     },
 };
