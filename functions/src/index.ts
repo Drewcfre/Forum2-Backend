@@ -43,7 +43,7 @@ exports.app = onRequest({cors: false}, async (req: any, res: any): Promise<void>
 exports.updateRealtime = functions.pubsub.schedule("every 2 minutes").onRun(async (): Promise<void> => {
     console.log("Updating Realtime Database...");
 
-    const boards = ["Main", "Anime", "Cook", "Fit", "Tech", "Vidya", "Admin"];
+    const boards = ["Main", "Anime", "Cooking", "Fitness", "Technology", "Vidya", "Admin"];
 
     for (const board of boards) {
         await db.collection(board).get().then((snapshot: any): void => {
@@ -63,7 +63,7 @@ exports.updateRealtime = functions.pubsub.schedule("every 2 minutes").onRun(asyn
 exports.clearLivePosts = functions.pubsub.schedule("every hour").onRun(async (): Promise<void> => {
     console.log("Clearing Live Posts...");
 
-    const boards = ["Main", "Anime", "Cook", "Fit", "Tech", "Vidya", "Admin"];
+    const boards = ["Main", "Anime", "Cooking", "Fitness", "Technology", "Vidya", "Admin"];
 
     for (const board of boards) {
         await db.collection(board).where("live", "==", true).get().then((snapshot: any): void => {

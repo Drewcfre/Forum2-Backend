@@ -43,7 +43,6 @@ export async function userAuthRoutes(fastify: any): Promise<void> {
                 title: "",
                 description: "",
                 postsRated: [],
-                threadsRated: [],
             });
 
             await sendEmail(

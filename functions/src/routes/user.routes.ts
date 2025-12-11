@@ -2,6 +2,7 @@ import {FastifyReply} from "fastify";
 
 import {db} from "../lib/instance";
 import {verifyToken} from "../functions/jwt.auth";
+import admin from "firebase-admin";
 
 export async function userRoutes(fastify: any): Promise<void> {
     fastify.get("/profile", async (req: any, res: FastifyReply): Promise<never> => {
@@ -41,9 +42,12 @@ export async function userRoutes(fastify: any): Promise<void> {
 
     fastify.delete("/delete/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const docs: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
-        if (docs[0].username != await verifyToken(req) || "") return res.code(403).send({error: "Invalid credentials!"});
 
-        await docs[0].delete();
+        if (docs.docs[0].data().username !== await verifyToken(req) || "") {
+            return res.code(403).send({error: "Invalid credentials!"});
+        }
+
+        await docs.docs[0].ref.delete();
 
         return res.code(200).send({deleteStatus: true});
     });
@@ -65,36 +69,34 @@ export async function userRoutes(fastify: any): Promise<void> {
 
     fastify.post("/rate/:board/:thread", async (req: any, res: FastifyReply): Promise<never> => {
         const username: string = await verifyToken(req) || "";
-        if (username) return res.code(403).send({error: "Not logged in!"});
+        if (username === "") return res.code(403).send({error: "Not logged in!"});
 
-        await db.collection("users").where("username", "==", username)
-            .limit(1).get().then(async (snapshot: any): Promise<any> => {
-                if (snapshot.empty) return res.code(400).send({error: "User not found!"});
+        const user: any = await db.collection("users").where("username", "==", username).get();
+        if (user.empty) return res.code(400).send({error: "User not found!"});
 
-                const threadData = snapshot.docs[0].data();
-                if (threadData.threadsRated.findKey(req.params.thread) != undefined) {
-                    return res.code(401).send({error: "Already rated thread!"});
-                }
-            });
+        const userData = user.docs[0].data();
+        if (userData.postsRated.includes(req.params.thread)) return res.code(401).send({error: "Already rated thread!"});
 
-        await db.collection(req.params.board).where("UUID", "==", req.params.thread).get()
-            .then(async (snapshot: any): Promise<FastifyReply> => {
-                if (snapshot.empty) return res.code(400).send({error: "Thread not found!"});
+        const thread: any = await db.collection(req.params.board).where("UUID", "==", req.params.thread).get();
+        if (thread.empty) return res.code(400).send({error: "Thread not found!"});
 
-                const threadRef = snapshot.docs[0].ref;
-                const threadData = snapshot.docs[0].data();
+        const threadRef = thread.docs[0].ref;
+        const threadData = thread.docs[0].data();
 
-                const rateCount = (threadData.rateCount + 1);
-                const rating = (threadData.rating + req.body.rating) / rateCount;
+        const currentUser: any = await db.collection("users").where("username", "==", username).get();
+        currentUser.docs[0].ref.update({postsRated: admin.firestore.FieldValue.arrayUnion(threadData.UUID)});
 
-                threadRef.update({
-                    rating: rating,
-                    rateCount: rateCount,
-                });
+        const rateCount = (threadData.rateCount + 1);
 
-                return res.code(200).send({rated: true});
-            });
+        console.log("Add: " + (threadData.rating + parseFloat(req.params.rating)));
 
-        return res.code(200).send({rated: false});
+        const rating = (threadData.rating + parseFloat(req.body.rating)) / rateCount;
+
+        console.log(rateCount);
+        console.log(rating);
+
+        threadRef.update({rating: rating, rateCount: rateCount});
+
+        return res.code(200).send({rated: true});
     });
 }
